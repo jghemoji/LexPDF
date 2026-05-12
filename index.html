@@ -1,0 +1,3148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>LexPDF 5.0 — Leitor Inteligente</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════════
+   TOKENS
+══════════════════════════════════════════════ */
+:root{
+  --bg:#0d0d0f;--bg2:#141417;--bg3:#1c1c21;--bg4:#242429;
+  --border:rgba(255,255,255,.07);--border-h:rgba(255,255,255,.15);
+  --accent:#e8c97a;--accent2:#c9a84c;
+  --accent-dim:rgba(232,201,122,.12);--accent-glow:rgba(232,201,122,.25);
+  --text:#f0ece4;--text2:#9e9a92;--text3:#5c5955;
+  --danger:#e07070;--success:#70c9a0;--pulse:rgba(232,201,122,.3);
+  --sidebar-w:320px;
+  --hdr-h:56px;--tabs-h:38px;
+  --bar-h:64px; /* mobile bottom bar */
+  --radius:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden}
+
+/* ── LIGHT THEME ── */
+body.light{
+  --bg:#f5f3ef;--bg2:#ffffff;--bg3:#ede9e3;--bg4:#ddd9d1;
+  --border:rgba(0,0,0,.09);--border-h:rgba(0,0,0,.18);
+  --text:#1a1612;--text2:#5a554d;--text3:#9e9a92;
+  --accent:#b8862a;--accent2:#8a6420;
+  --accent-dim:rgba(184,134,42,.12);--accent-glow:rgba(184,134,42,.25);
+  --pulse:rgba(184,134,42,.3);
+}
+body.light .text-content{color:#2a2520}
+body.light .canvas-container{background:#e8e4de}
+body.light .karaoke-chip{background:rgba(245,243,239,.95)}
+body.light .toast{background:var(--bg2)}
+body.light #rsvpOverlay{background:rgba(245,243,239,.97)}
+
+/* ══════════════════════════════════════════════
+   APP SHELL (GRID)
+══════════════════════════════════════════════ */
+.app{
+  display:grid;
+  grid-template-rows:var(--hdr-h) var(--tabs-h) 1fr;
+  grid-template-columns:var(--sidebar-w) 1fr;
+  height:100dvh;
+  grid-template-areas:"header header""tabs tabs""sidebar viewer";
+  transition:grid-template-columns .25s ease;
+}
+.app.sidebar-hidden{ grid-template-columns:0 1fr; }
+
+/* ══════════════════════════════════════════════
+   HEADER
+══════════════════════════════════════════════ */
+header{
+  grid-area:header;background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:10px;z-index:20;
+}
+.logo{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--accent);letter-spacing:-.02em;white-space:nowrap}
+.logo span{color:var(--text3);font-weight:400;font-size:11px;margin-left:6px;font-family:'DM Sans',sans-serif}
+.hdr-sep{flex:1}
+.hdr-actions{display:flex;align-items:center;gap:6px}
+
+/* icon buttons (header & toolbar) */
+.icon-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text3);
+  width:30px;height:30px;border-radius:var(--radius);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.icon-btn:hover{background:var(--bg4);color:var(--text);border-color:var(--border-h)}
+.icon-btn.on,.icon-btn.active{background:var(--accent-dim);color:var(--accent);border-color:rgba(232,201,122,.3)}
+
+.btn-sidebar-toggle{background:var(--bg3);border:1px solid var(--border);color:var(--text3);
+  width:32px;height:32px;border-radius:var(--radius);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.btn-sidebar-toggle:hover{background:var(--bg4);color:var(--text);border-color:var(--border-h)}
+.btn-sidebar-toggle svg{transition:transform .25s}
+.app.sidebar-hidden .btn-sidebar-toggle svg{transform:rotate(180deg)}
+
+.btn-add{background:var(--accent);color:#1a1508;border:none;padding:7px 14px;border-radius:var(--radius);
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap}
+.btn-add:hover{background:#f0d48a;transform:translateY(-1px)}
+.mode-badge{display:none;align-items:center;gap:5px;background:var(--accent-dim);
+  border:1px solid rgba(232,201,122,.2);color:var(--accent);padding:3px 9px;
+  border-radius:20px;font-size:11px;font-weight:500}
+.mode-dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.mode-dot.pulse{animation:dotpulse 1.2s ease-in-out infinite}
+@keyframes dotpulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ══════════════════════════════════════════════
+   TABS BAR
+══════════════════════════════════════════════ */
+.tabs-bar{grid-area:tabs;background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-end;padding:0 10px;gap:2px;overflow-x:auto;scrollbar-width:none;z-index:9}
+.tabs-bar::-webkit-scrollbar{display:none}
+.tabs-empty{display:flex;align-items:center;padding:0 4px 7px;font-size:12px;color:var(--text3);white-space:nowrap}
+.doc-tab{display:flex;align-items:center;gap:6px;padding:5px 11px 7px;border-radius:7px 7px 0 0;
+  background:transparent;border:1px solid transparent;border-bottom:none;cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-size:12px;color:var(--text3);white-space:nowrap;
+  max-width:175px;transition:all .15s;flex-shrink:0}
+.doc-tab:hover{background:var(--bg3);color:var(--text2)}
+.doc-tab.active{background:var(--bg);border-color:var(--border);color:var(--text);border-bottom-color:var(--bg)}
+.tab-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:115px}
+.tab-close{opacity:0;width:16px;height:16px;border-radius:3px;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;font-size:14px;line-height:1;color:var(--text3);transition:all .1s;cursor:pointer}
+.doc-tab:hover .tab-close{opacity:1}
+.tab-close:hover{background:rgba(224,112,112,.2);color:var(--danger)}
+.tab-add-btn{background:transparent;border:none;color:var(--text3);width:26px;height:26px;
+  border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:19px;line-height:1;transition:all .15s;margin-bottom:5px;flex-shrink:0}
+.tab-add-btn:hover{background:var(--bg3);color:var(--accent)}
+
+/* ══════════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════════ */
+.sidebar{
+  grid-area:sidebar;background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;width:var(--sidebar-w);
+  transition:opacity .25s;
+}
+.app.sidebar-hidden .sidebar{opacity:0;pointer-events:none}
+.sidebar-section{padding:12px 15px;border-bottom:1px solid var(--border);flex-shrink:0}
+.sec-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:9px}
+.section-flex{display:flex;align-items:center;gap:5px;margin-bottom:0;flex-wrap:wrap}
+.section-flex .sec-label{margin:0;flex:1}
+
+/* ── LIBRARY ── */
+.lib-header{display:flex;align-items:center;justify-content:space-between}
+.library-panel{display:none;flex-direction:column;gap:4px;padding:7px 12px 10px;
+  border-bottom:1px solid var(--border);max-height:190px;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:var(--bg4) transparent}
+.library-panel.open{display:flex}
+.library-panel::-webkit-scrollbar{width:3px}
+.library-panel::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.lib-item{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:var(--radius);
+  cursor:pointer;transition:all .15s;border:1px solid transparent}
+.lib-item:hover{background:var(--bg3);border-color:var(--border)}
+.lib-item.active-doc{background:var(--accent-dim);border-color:rgba(232,201,122,.25)}
+.lib-icon{width:26px;height:26px;border-radius:5px;background:var(--bg4);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text3)}
+.lib-item.active-doc .lib-icon{background:var(--accent);color:#1a1508}
+.lib-info{flex:1;overflow:hidden}
+.lib-name{font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-item.active-doc .lib-name{color:var(--accent)}
+.lib-meta{font-size:10px;color:var(--text3);margin-top:1px}
+.lib-remove{opacity:0;color:var(--text3);font-size:15px;cursor:pointer;width:18px;height:18px;
+  display:flex;align-items:center;justify-content:center;border-radius:3px;transition:all .1s;flex-shrink:0}
+.lib-item:hover .lib-remove{opacity:1}
+.lib-remove:hover{background:rgba(224,112,112,.15);color:var(--danger)}
+.lib-empty,.bm-empty{font-size:12px;color:var(--text3);text-align:center;padding:8px 0}
+.lib-count{font-size:11px;font-weight:600;background:var(--bg4);color:var(--text2);
+  padding:1px 7px;border-radius:10px;min-width:20px;text-align:center}
+
+/* ══════════════════════════════════════════════
+   SIDEBAR INNER TAB NAVIGATION
+══════════════════════════════════════════════ */
+.sb-tabs{display:flex;background:var(--bg2);border-bottom:2px solid var(--border);flex-shrink:0;overflow-x:auto;scrollbar-width:none}
+.sb-tabs::-webkit-scrollbar{display:none}
+.sb-tab{flex:1;padding:9px 4px 8px;border:none;background:transparent;color:var(--text3);
+  font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;cursor:pointer;
+  transition:all .18s;display:flex;align-items:center;justify-content:center;gap:4px;
+  border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;min-width:0}
+.sb-tab:hover{color:var(--text2);background:var(--bg3)}
+.sb-tab.active{color:var(--accent);border-bottom-color:var(--accent);background:transparent}
+.sb-tab svg{flex-shrink:0}
+
+/* pane scroll container */
+.sb-pane{display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
+  scrollbar-width:thin;scrollbar-color:var(--bg4) transparent;min-height:0}
+.sb-pane::-webkit-scrollbar{width:3px}
+.sb-pane::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.sb-pane.hidden{display:none!important}
+
+/* ── SETTINGS GROUPS ── */
+.cfg-g{padding:13px 15px;border-bottom:1px solid var(--border)}
+.cfg-g:last-child{border-bottom:none}
+.cfg-gtitle{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text3);margin-bottom:11px;display:flex;align-items:center;gap:6px}
+.cfg-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.cfg-row:last-child{margin-bottom:0}
+.cfg-lbl{font-size:12px;color:var(--text2);flex:1;line-height:1.3}
+.cfg-sub{font-size:10px;color:var(--text3);display:block;margin-top:1px}
+.cfg-stepper{display:flex;align-items:center;gap:5px}
+.cfg-sbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  width:26px;height:26px;border-radius:6px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-size:14px;font-weight:700;line-height:1;transition:all .15s;flex-shrink:0}
+.cfg-sbtn:hover{background:var(--bg4);color:var(--text)}
+.cfg-sval{font-family:'DM Mono',monospace;font-size:12px;color:var(--accent);min-width:36px;text-align:center}
+.cfg-sel{background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:5px 26px 5px 9px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:12px;
+  cursor:pointer;outline:none;transition:border-color .2s;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%239e9a92' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 7px center;max-width:160px;min-width:80px}
+.cfg-sel:focus{border-color:var(--accent)}
+.cfg-swatches{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.cfg-sw{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0}
+.cfg-sw:hover{transform:scale(1.2)}
+.cfg-sw.active{border-color:var(--text);transform:scale(1.15)}
+/* kbd shortcut table */
+.kbd-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 10px}
+kbd{background:var(--bg3);border:1px solid var(--border);border-radius:4px;
+  padding:2px 6px;font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);white-space:nowrap;display:inline-block}
+.kbd-desc{color:var(--text2);font-size:11px;align-self:center}
+/* country / voice picker */
+.country-picker{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:7px 30px 7px 11px;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:13px;
+  cursor:pointer;outline:none;transition:border-color .2s;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239e9a92' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center}
+.country-picker:focus{border-color:var(--accent)}
+.voice-hint{font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5;padding:0 1px}
+
+/* ── BOOKMARKS ── */
+.bm-panel{display:none;flex-direction:column;gap:4px;padding:6px 12px 10px;
+  border-bottom:1px solid var(--border);max-height:140px;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:var(--bg4) transparent}
+.bm-panel.open{display:flex}
+.bm-panel::-webkit-scrollbar{width:3px}
+.bm-panel::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.bm-item{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:7px;
+  cursor:pointer;transition:all .15s;border:1px solid transparent}
+.bm-item:hover{background:var(--bg3);border-color:var(--border)}
+.bm-item.active-doc{background:var(--accent-dim);border-color:rgba(232,201,122,.2)}
+.bm-pg{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);
+  background:var(--accent-dim);padding:1px 6px;border-radius:4px;flex-shrink:0;white-space:nowrap}
+.bm-note{font-size:12px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bm-del{opacity:0;color:var(--text3);font-size:15px;cursor:pointer;width:18px;height:18px;
+  display:flex;align-items:center;justify-content:center;border-radius:3px;transition:all .1s;flex-shrink:0}
+.bm-item:hover .bm-del{opacity:1}
+.bm-del:hover{background:rgba(224,112,112,.15);color:var(--danger)}
+
+/* ── NOTES PANEL ── */
+.notes-panel{display:none;flex-direction:column;gap:4px;padding:6px 12px 10px;
+  border-bottom:1px solid var(--border)}
+.notes-panel.open{display:flex}
+.notes-textarea{width:100%;height:90px;background:var(--bg3);border:1px solid var(--border);
+  color:var(--text);padding:7px 9px;border-radius:7px;font-family:'DM Sans',sans-serif;
+  font-size:12px;resize:none;outline:none;transition:border-color .2s;scrollbar-width:thin}
+.notes-textarea:focus{border-color:var(--accent)}
+.notes-actions{display:flex;gap:5px;margin-top:5px}
+.btn-note-action{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  padding:4px 8px;border-radius:6px;font-family:'DM Sans',sans-serif;font-size:11px;
+  cursor:pointer;transition:all .15s;flex:1;text-align:center}
+.btn-note-action:hover{background:var(--bg4);color:var(--text)}
+
+/* ── VOICE ── */
+.voice-select{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:7px 11px;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:13px;
+  cursor:pointer;outline:none;transition:border-color .2s;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239e9a92' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center;padding-right:30px}
+.voice-select:focus{border-color:var(--accent)}
+
+/* ── SLIDERS ── */
+.slider-row{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.slider-row:last-child{margin-bottom:0}
+.slider-label{font-size:12px;color:var(--text2);width:62px;flex-shrink:0}
+.slider-wrap{flex:1}
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:var(--bg4);border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--accent);border-radius:50%;cursor:pointer;transition:transform .15s;box-shadow:0 0 8px var(--accent-glow)}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.3)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--accent);border-radius:50%;border:none;cursor:pointer}
+.slider-val{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);width:36px;text-align:right;flex-shrink:0}
+
+/* ── OPTIONS / TOGGLES ── */
+.opt-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.opt-row:last-child{margin-bottom:0}
+.opt-label{font-size:12px;color:var(--text2)}
+.toggle{width:34px;height:18px;background:var(--bg4);border-radius:9px;position:relative;cursor:pointer;transition:background .2s;border:1px solid var(--border)}
+.toggle.on{background:var(--accent);border-color:var(--accent)}
+.toggle::after{content:'';position:absolute;left:2px;top:50%;transform:translateY(-50%);width:12px;height:12px;background:var(--text3);border-radius:50%;transition:all .2s}
+.toggle.on::after{left:calc(100% - 14px);background:#1a1508}
+
+/* ── APPEARANCE ── */
+.font-size-row{display:flex;align-items:center;gap:8px;margin-top:5px}
+.fs-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  width:26px;height:26px;border-radius:6px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-size:13px;font-weight:600;transition:all .15s;line-height:1;flex-shrink:0}
+.fs-btn:hover{background:var(--bg4);color:var(--text)}
+.fs-val{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);width:30px;text-align:center}
+.hl-colors{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.hl-swatch{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0}
+.hl-swatch:hover{transform:scale(1.2)}
+.hl-swatch.active{border-color:var(--text);transform:scale(1.15)}
+.line-spacing-row{display:flex;align-items:center;gap:8px;margin-top:8px}
+
+/* ── STATS ── */
+.stats-row{display:flex;gap:5px;margin-bottom:0;flex-wrap:wrap}
+.stat-chip{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);
+  padding:5px 7px;flex:1;min-width:52px;text-align:center}
+.stat-val{font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:var(--accent);display:block;line-height:1.2}
+.stat-lbl{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-top:2px;display:block}
+
+/* ── EXPORT ── */
+.export-row{display:flex;gap:5px;margin-top:7px}
+.btn-export{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  padding:5px 8px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:11px;
+  cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:4px;flex:1;justify-content:center}
+.btn-export:hover{background:var(--bg4);color:var(--text)}
+
+/* ── PLAYBACK CONTROLS ── */
+.playback-controls{display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 15px;border-bottom:1px solid var(--border);flex-shrink:0}
+.ctrl-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  width:36px;height:36px;border-radius:10px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:all .2s;flex-shrink:0}
+.ctrl-btn:hover{background:var(--bg4);color:var(--text);border-color:var(--border-h)}
+.play-btn{background:var(--accent);border:none;color:#1a1508;width:48px;height:48px;
+  border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;box-shadow:0 0 20px var(--accent-glow);flex-shrink:0}
+.play-btn:hover{background:#f0d48a;transform:scale(1.05)}
+.play-btn.playing{animation:pulsering 1.4s ease-out infinite}
+@keyframes pulsering{0%{box-shadow:0 0 0 0 var(--pulse)}70%{box-shadow:0 0 0 14px transparent}100%{box-shadow:0 0 0 0 transparent}}
+
+/* ── STATUS BAR ── */
+.status-bar{padding:8px 15px;border-bottom:1px solid var(--border);flex-shrink:0}
+.progress-track{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:6px;cursor:pointer}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:2px;transition:width .3s;width:0%}
+.status-info{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text3)}
+.cw-block{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.cw-label{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.cw-word{font-family:'Playfair Display',serif;font-weight:700;color:var(--accent);font-size:14px;
+  max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 0 12px var(--accent-glow)}
+
+/* ── PAGE NAV ── */
+.page-nav{padding:8px 15px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);flex-shrink:0}
+.page-nav-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  width:27px;height:27px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.page-nav-btn:hover:not(:disabled){background:var(--bg4);color:var(--text)}
+.page-nav-btn:disabled{opacity:.3;cursor:not-allowed}
+.page-input{background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  width:42px;height:27px;border-radius:7px;text-align:center;
+  font-family:'DM Mono',monospace;font-size:12px;outline:none;transition:border-color .2s}
+.page-input:focus{border-color:var(--accent)}
+.page-total{font-size:12px;color:var(--text3)}
+
+/* ── TEXT PANEL ── */
+.text-panel{flex:1;overflow-y:auto;padding:14px;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent;background:var(--bg)}
+.text-panel::-webkit-scrollbar{width:4px}
+.text-panel::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.text-content{font-size:15px;line-height:2;color:#d8d3c8;letter-spacing:.01em}
+.text-content .word{display:inline;padding:2px 1px;border-radius:3px;cursor:pointer;transition:background .1s,color .1s}
+.text-content .word:hover{background:var(--bg4);color:#fff}
+.text-content .word[title]::after{content:attr(title)}
+/* Dica de duplo-clique */
+.text-content{cursor:default;user-select:text}
+/* Dict popup arrow */
+#dictPopup{animation:fadeInUp .18s ease}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.text-content .word.hl{background:var(--accent);color:#1a1508;padding:2px 5px;border-radius:4px;font-weight:700;box-shadow:0 0 10px var(--accent-glow)}
+.text-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;gap:10px;color:var(--text3);text-align:center}
+.text-empty svg{opacity:.3}
+.text-empty p{font-size:13px}
+.word.search-hl{background:rgba(100,180,255,.3);border-radius:2px;padding:1px 2px}
+.word.search-hl.search-active{background:rgba(255,200,60,.6);outline:2px solid rgba(255,200,60,.9);border-radius:3px}
+
+/* ══════════════════════════════════════════════
+   VIEWER AREA
+══════════════════════════════════════════════ */
+.viewer{grid-area:viewer;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;position:relative}
+.viewer:fullscreen,.viewer:-webkit-full-screen{background:var(--bg)}
+
+/* ── VIEWER TOOLBAR ── */
+.viewer-toolbar{height:44px;background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;gap:5px;overflow-x:auto;scrollbar-width:none;flex-shrink:0}
+.viewer-toolbar::-webkit-scrollbar{display:none}
+.view-btn{background:transparent;border:1px solid transparent;color:var(--text3);height:28px;padding:0 10px;
+  border-radius:7px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+  transition:all .15s;display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0}
+.view-btn:hover{color:var(--text);background:var(--bg3)}
+.view-btn.active{color:var(--accent);background:var(--accent-dim);border-color:rgba(232,201,122,.2)}
+.tb-sep{width:1px;height:16px;background:var(--border);margin:0 1px;flex-shrink:0}
+.zoom-group{display:flex;align-items:center;gap:3px;margin-left:auto;flex-shrink:0}
+.zoom-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  width:24px;height:24px;border-radius:5px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-size:14px;transition:all .15s;line-height:1}
+.zoom-btn:hover{background:var(--bg4);color:var(--text)}
+.zoom-level{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);width:36px;text-align:center}
+.k-toggle-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  height:28px;padding:0 10px;border-radius:7px;cursor:pointer;font-family:'DM Sans',sans-serif;
+  font-size:12px;font-weight:500;transition:all .15s;display:flex;align-items:center;gap:4px;flex-shrink:0}
+.k-toggle-btn:hover{color:var(--text);background:var(--bg4)}
+.k-toggle-btn.active{color:var(--accent);background:var(--accent-dim);border-color:rgba(232,201,122,.3)}
+
+/* ── SEARCH BAR ── */
+.search-bar{
+  display:none;position:absolute;top:52px;right:14px;z-index:60;
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 4px 24px rgba(0,0,0,.4);padding:5px 9px;
+  align-items:center;gap:7px;min-width:270px;
+}
+.search-bar.open{display:flex}
+.search-input{background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:5px 9px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;
+  outline:none;transition:border-color .2s;flex:1}
+.search-input:focus{border-color:var(--accent)}
+.search-nav-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  width:24px;height:24px;border-radius:5px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:all .15s;flex-shrink:0}
+.search-nav-btn:hover{background:var(--bg4);color:var(--text)}
+.search-count{font-size:11px;color:var(--text3);white-space:nowrap;font-family:'DM Mono',monospace;min-width:42px;text-align:center}
+.search-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:17px;line-height:1;padding:2px 4px;transition:color .15s}
+.search-close:hover{color:var(--danger)}
+
+/* ── VIEWER INNER (canvas + thumbs) ── */
+.viewer-inner{display:flex;flex:1;overflow:hidden;min-height:0}
+
+/* ── CANVAS CONTAINER ── */
+.canvas-container{flex:1;overflow:auto;display:flex;flex-direction:column;align-items:center;
+  padding:20px;gap:14px;scrollbar-width:thin;scrollbar-color:var(--bg3) transparent;position:relative}
+.canvas-container::-webkit-scrollbar{width:7px}
+.canvas-container::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px}
+.canvas-container::-webkit-scrollbar-track{background:transparent}
+
+/* ── PAGE WRAPPER ── */
+.page-wrapper{position:relative;box-shadow:0 6px 36px rgba(0,0,0,.6);border-radius:4px;overflow:hidden;flex-shrink:0}
+.page-wrapper canvas{display:block;border-radius:4px}
+.page-label{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);
+  font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap}
+
+/* ── TEXT LAYER (TTS PDF highlight) ── */
+.textLayer{position:absolute;inset:0;overflow:hidden;opacity:1;line-height:1;pointer-events:none}
+.textLayer span{position:absolute;color:transparent;white-space:pre;cursor:text;
+  transform-origin:0% 0%;pointer-events:auto}
+.textLayer span.pdf-hl{background:rgba(232,201,122,.45);border-radius:2px;
+  box-shadow:0 0 0 1px rgba(232,201,122,.6);mix-blend-mode:multiply}
+
+/* ── UPLOAD AREA ── */
+.upload-area{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:16px;cursor:pointer;transition:all .3s}
+.upload-area.drag-over .upload-circle{border-color:var(--accent);background:var(--accent-dim);transform:scale(1.05)}
+.upload-circle{width:88px;height:88px;border:2px dashed var(--border-h);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;transition:all .3s}
+.upload-circle svg{opacity:.5}
+.upload-text{text-align:center}
+.upload-text h3{font-family:'Playfair Display',serif;font-size:18px;color:var(--text);margin-bottom:6px}
+.upload-text p{font-size:13px;color:var(--text3)}
+.upload-text .or{font-size:11px;color:var(--text3);margin:8px 0}
+.btn-browse{background:var(--accent);color:#1a1508;border:none;padding:8px 20px;
+  border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-browse:hover{background:#f0d48a}
+.supported-fmts{font-size:11px;color:var(--text3)}
+
+/* ── LOADING OVERLAY ── */
+.loading-overlay{position:absolute;inset:0;background:rgba(13,13,15,.85);display:flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20;backdrop-filter:blur(4px)}
+.loading-overlay.hidden{display:none}
+.spinner{width:34px;height:34px;border:3px solid var(--bg4);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:13px;color:var(--text2)}
+
+/* ── THUMBNAILS ── */
+#thumbPanel{display:none;width:90px;flex-shrink:0;background:var(--bg2);border-left:1px solid var(--border);
+  overflow-y:auto;flex-direction:column;align-items:center;padding:9px 5px;gap:7px;
+  scrollbar-width:thin;scrollbar-color:var(--bg4) transparent}
+#thumbPanel.open{display:flex}
+#thumbPanel::-webkit-scrollbar{width:3px}
+#thumbPanel::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.thumb-item{cursor:pointer;border-radius:4px;overflow:hidden;border:2px solid transparent;
+  transition:all .15s;width:74px;flex-shrink:0;position:relative;background:var(--bg4)}
+.thumb-item:hover{border-color:var(--border-h)}
+.thumb-item.active{border-color:var(--accent);box-shadow:0 0 10px var(--accent-glow)}
+.thumb-item canvas{display:block;width:100%;height:auto}
+.thumb-num{position:absolute;bottom:0;left:0;right:0;background:rgba(13,13,15,.75);
+  font-size:9px;font-family:'DM Mono',monospace;color:rgba(255,255,255,.7);text-align:center;padding:2px 0}
+
+/* ── KARAOKE ── */
+#karaokePanel{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:50;
+  pointer-events:none;display:none;flex-direction:column;align-items:center;
+  width:calc(100% - 60px);max-width:820px}
+#karaokePanel.visible{display:flex}
+.karaoke-chip{background:rgba(13,13,15,.92);border:1px solid var(--border);
+  backdrop-filter:blur(14px);border-radius:14px;padding:12px 18px;width:100%;
+  box-shadow:0 8px 40px rgba(0,0,0,.6);pointer-events:all}
+.karaoke-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.karaoke-title{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:6px}
+.k-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:dotpulse 1.2s ease-in-out infinite}
+.k-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:17px;line-height:1;padding:2px;transition:color .15s;pointer-events:all}
+.k-close:hover{color:var(--text)}
+.karaoke-words{display:flex;flex-wrap:wrap;gap:4px 5px;line-height:2;min-height:34px}
+.karaoke-words .kw{font-size:15px;color:rgba(240,236,228,.3);transition:all .15s;border-radius:4px;padding:1px 4px}
+.karaoke-words .kw.done{color:rgba(240,236,228,.5)}
+.karaoke-words .kw.active{color:var(--accent);font-weight:700;font-size:17px;text-shadow:0 0 16px var(--accent-glow);background:var(--accent-dim);padding:1px 6px;border-radius:6px}
+
+/* ── RSVP ── */
+#rsvpOverlay{display:none;position:fixed;inset:0;background:rgba(13,13,15,.97);z-index:200;
+  flex-direction:column;align-items:center;justify-content:center;gap:18px}
+#rsvpOverlay.open{display:flex}
+.rsvp-word{font-family:'Playfair Display',serif;font-size:clamp(32px,6vw,76px);
+  font-weight:700;color:var(--accent);text-shadow:0 0 40px var(--accent-glow);
+  letter-spacing:-.02em;min-height:86px;display:flex;align-items:center;justify-content:center;
+  text-align:center;padding:0 20px;max-width:80vw;width:100%}
+.rsvp-guide{color:var(--text3);font-size:10px;text-align:center;letter-spacing:.05em}
+.rsvp-progress{width:min(400px,80vw);height:2px;background:var(--bg4);border-radius:1px}
+.rsvp-progress-fill{height:100%;background:var(--accent);border-radius:1px;transition:width .15s}
+.rsvp-info{font-size:12px;color:var(--text3);display:flex;gap:16px;font-family:'DM Mono',monospace}
+.rsvp-controls{display:flex;align-items:center;gap:9px}
+.rsvp-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  height:34px;padding:0 13px;border-radius:var(--radius);cursor:pointer;font-family:'DM Sans',sans-serif;
+  font-size:12px;font-weight:500;transition:all .15s;display:flex;align-items:center;gap:5px}
+.rsvp-btn:hover{background:var(--bg4);color:var(--text)}
+.rsvp-btn.accent{background:var(--accent);border-color:var(--accent);color:#1a1508}
+.rsvp-btn.accent:hover{background:#f0d48a}
+.rsvp-wpm-row{display:flex;align-items:center;gap:10px}
+.rsvp-wpm-label{font-size:12px;color:var(--text2)}
+.rsvp-close-btn{position:absolute;top:18px;right:18px;background:var(--bg3);border:1px solid var(--border);
+  color:var(--text2);width:34px;height:34px;border-radius:var(--radius);cursor:pointer;display:flex;
+  align-items:center;justify-content:center;font-size:17px;line-height:1;transition:all .15s}
+.rsvp-close-btn:hover{background:var(--bg4);color:var(--text)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--bg3);border:1px solid var(--border);
+  padding:10px 15px;border-radius:10px;font-size:13px;color:var(--text);z-index:1000;
+  transform:translateY(80px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);
+  max-width:290px;display:flex;align-items:center;gap:9px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.error{border-left:3px solid var(--danger)}
+.toast.success{border-left:3px solid var(--success)}
+
+/* ── CONTEXT MENU ── */
+#ctxMenu{display:none;position:fixed;z-index:500;background:var(--bg2);
+  border:1px solid var(--border);border-radius:10px;padding:5px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);min-width:160px}
+#ctxMenu.open{display:block}
+.ctx-item{padding:7px 12px;border-radius:6px;font-size:13px;color:var(--text2);
+  cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px}
+.ctx-item:hover{background:var(--bg3);color:var(--text)}
+.ctx-sep{height:1px;background:var(--border);margin:4px 0}
+
+/* ── MOBILE BOTTOM BAR ── */
+.mobile-bottom-bar{display:none;position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:var(--bg2);border-top:1px solid var(--border);
+  padding:8px 16px calc(8px + env(safe-area-inset-bottom));
+  gap:6px;align-items:center;justify-content:space-around}
+.mb-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:all .2s;flex-shrink:0}
+.mb-btn:active{background:var(--bg4);color:var(--text);transform:scale(.95)}
+.mb-play{background:var(--accent);border-color:var(--accent);color:#1a1508;width:50px;height:50px;border-radius:50%}
+.mb-play:active{background:#f0d48a}
+.mb-play.playing{animation:pulsering 1.4s ease-out infinite}
+.mb-menu{background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:all .2s;flex-shrink:0}
+
+/* ── MOBILE SETTINGS SHEET ── */
+#mobileSheet{display:none;position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.55)}
+#mobileSheet.open{display:block}
+.sheet-inner{position:absolute;bottom:0;left:0;right:0;background:var(--bg2);
+  border-radius:16px 16px 0 0;padding:0 0 calc(env(safe-area-inset-bottom)+16px);
+  max-height:88dvh;overflow-y:auto;animation:slideUp .28s ease}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet-handle{width:36px;height:4px;background:var(--bg4);border-radius:2px;
+  margin:12px auto 14px;flex-shrink:0}
+.sheet-section{padding:0 16px 14px;border-bottom:1px solid var(--border)}
+.sheet-section:last-child{border-bottom:none}
+.sheet-title{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text3);margin-bottom:11px;padding-top:14px}
+.sheet-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sheet-row:last-child{margin-bottom:0}
+.sheet-label{font-size:13px;color:var(--text2)}
+
+/* ── MOBILE LIBRARY SHEET ── */
+#mobileLibSheet{display:none;position:fixed;inset:0;z-index:151;background:rgba(0,0,0,.55)}
+#mobileLibSheet.open{display:block}
+.lib-sheet-inner{position:absolute;bottom:0;left:0;right:0;background:var(--bg2);
+  border-radius:16px 16px 0 0;padding:0 0 calc(env(safe-area-inset-bottom)+16px);
+  max-height:85dvh;overflow-y:auto;animation:slideUp .28s ease}
+.lib-sheet-header{display:flex;align-items:center;justify-content:space-between;
+  padding:16px 16px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.lib-sheet-title{font-size:15px;font-weight:600;color:var(--text)}
+.lib-sheet-close{background:var(--bg3);border:1px solid var(--border);color:var(--text3);
+  width:28px;height:28px;border-radius:7px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-size:16px;transition:all .15s}
+.lib-sheet-close:hover{color:var(--text);background:var(--bg4)}
+.lib-sheet-body{padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.lib-sheet-add{padding:10px 16px;border-top:1px solid var(--border)}
+.lib-sheet-add .btn-add{width:100%;justify-content:center}
+.lib-sheet-item{display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-radius:10px;cursor:pointer;transition:all .15s;border:1px solid transparent}
+.lib-sheet-item:hover,.lib-sheet-item:active{background:var(--bg3);border-color:var(--border)}
+.lib-sheet-item.active-doc{background:var(--accent-dim);border-color:rgba(232,201,122,.25)}
+.lib-sheet-icon{width:32px;height:32px;border-radius:7px;background:var(--bg4);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text3)}
+.lib-sheet-item.active-doc .lib-sheet-icon{background:var(--accent);color:#1a1508}
+.lib-sheet-name{font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.lib-sheet-item.active-doc .lib-sheet-name{color:var(--accent)}
+.lib-sheet-meta{font-size:11px;color:var(--text3)}
+.lib-sheet-del{color:var(--text3);font-size:17px;cursor:pointer;width:24px;height:24px;
+  display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all .1s;flex-shrink:0}
+.lib-sheet-del:active{background:rgba(224,112,112,.15);color:var(--danger)}
+
+#fileInputMulti{display:none}
+
+/* ══════════════════════════════════════════════
+   RESPONSIVE — MOBILE ≤ 680 px
+══════════════════════════════════════════════ */
+@media (max-width:680px){
+  :root{--sidebar-w:100vw}
+
+  .app{
+    grid-template-columns:0 1fr;
+    grid-template-rows:var(--hdr-h) var(--tabs-h) 1fr;
+  }
+
+  /* sidebar slides as full-screen overlay */
+  .sidebar{
+    position:fixed;top:calc(var(--hdr-h) + var(--tabs-h));left:0;bottom:0;
+    width:100vw;z-index:30;
+    transform:translateX(-100%);
+    transition:transform .28s ease;
+    opacity:1 !important;pointer-events:auto !important;
+    overflow-y:auto;
+  }
+  .app.sidebar-visible .sidebar{transform:translateX(0)}
+  .app.sidebar-visible::after{
+    content:'';position:fixed;inset:0;
+    top:calc(var(--hdr-h) + var(--tabs-h));
+    background:rgba(0,0,0,.5);z-index:29;
+  }
+
+  /* viewer + tabs always full-width */
+  .viewer{grid-column:1/-1}
+  .tabs-bar{grid-column:1/-1}
+
+  /* bottom bar visible */
+  .mobile-bottom-bar{display:flex}
+
+  /* extra padding so content not hidden behind bar */
+  .canvas-container{padding-bottom:calc(var(--bar-h) + 24px)}
+  .text-panel{padding-bottom:calc(var(--bar-h) + 20px)}
+
+  /* hide sidebar playback — use bottom bar */
+  .playback-controls{display:none}
+
+  /* hide thumbnails on mobile */
+  #thumbPanel{display:none!important}
+
+  /* search bar full-width */
+  .search-bar{right:8px;left:8px;min-width:unset;top:50px}
+
+  /* compact tabs */
+  .doc-tab{max-width:115px}
+  .tab-name{max-width:68px}
+
+  /* compact header */
+  .btn-add span{display:none}
+  .btn-add{padding:7px 10px}
+  .logo span{display:none}
+
+  /* sidebar sections: larger touch targets */
+  .sidebar-section{padding:12px 14px}
+  .opt-row{margin-bottom:12px}
+  .slider-row{margin-bottom:12px}
+  .toggle{width:40px;height:22px}
+  .toggle::after{width:16px;height:16px}
+  .toggle.on::after{left:calc(100% - 18px)}
+  .voice-select{padding:10px 11px;font-size:14px}
+
+  /* text panel: bigger font base on mobile */
+  .text-content{font-size:16px;line-height:2.1}
+
+  /* toast above bottom bar */
+  .toast{bottom:calc(var(--bar-h) + 12px);right:12px;left:12px;max-width:100%}
+
+  /* rsvp word smaller on narrow screens */
+  .rsvp-word{font-size:clamp(28px,9vw,56px)}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ══ HEADER ══ -->
+  <header>
+    <button class="btn-sidebar-toggle" id="sidebarToggleBtn" onclick="toggleSidebar()" title="Mostrar/ocultar painel (B)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
+      </svg>
+    </button>
+    <div class="logo">LexPDF <span>Leitor Inteligente</span></div>
+    <div class="hdr-sep"></div>
+    <div class="hdr-actions">
+      <div class="mode-badge" id="modeBadge">
+        <div class="mode-dot pulse"></div>
+        <span id="modeText">Lendo</span>
+      </div>
+      <!-- mobile: files button opens lib sheet -->
+      <button class="icon-btn" id="mobileLibBtn" onclick="openMobileLib()" title="Arquivos" style="display:none">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </button>
+      <button class="btn-add" onclick="document.getElementById('fileInputMulti').click()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Adicionar PDFs</span>
+      </button>
+    </div>
+    <input type="file" id="fileInputMulti" accept=".pdf" multiple onchange="handleFiles(this.files);this.value=''">
+  </header>
+
+  <!-- ══ TABS BAR ══ -->
+  <div class="tabs-bar" id="tabsBar">
+    <span class="tabs-empty" id="tabsEmpty">Nenhum PDF aberto</span>
+    <button class="tab-add-btn" title="Adicionar PDF" onclick="document.getElementById('fileInputMulti').click()">＋</button>
+  </div>
+
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar" id="sidebar">
+
+    <!-- ── INNER TAB NAV ── -->
+    <div class="sb-tabs">
+      <button class="sb-tab active" id="sbTabReading" onclick="switchSbTab('reading')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+        Leitura
+      </button>
+      <button class="sb-tab" id="sbTabDocs" onclick="switchSbTab('docs')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Docs
+      </button>
+      <button class="sb-tab" id="sbTabFav" onclick="switchSbTab('fav')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+        Favoritos
+      </button>
+      <button class="sb-tab" id="sbTabCfg" onclick="switchSbTab('cfg')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Config
+      </button>
+    </div>
+
+    <!-- ════ PANE: LEITURA ════ -->
+    <div class="sb-pane" id="sbPaneReading">
+
+      <!-- AUDIO SLIDERS -->
+      <div class="sidebar-section">
+        <div class="sec-label" id="lbl-audio">⚙️ Configurações de Áudio</div>
+        <div class="slider-row">
+          <span class="slider-label" id="lbl-speed">Velocidade</span>
+          <div class="slider-wrap"><input type="range" id="speedSlider" min="0.3" max="3" step="0.05" value="1" oninput="updateSlider('speed',this.value)"></div>
+          <span class="slider-val" id="speedVal">1.0×</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label" id="lbl-pitch">Tom</span>
+          <div class="slider-wrap"><input type="range" id="pitchSlider" min="0" max="2" step="0.05" value="1" oninput="updateSlider('pitch',this.value)"></div>
+          <span class="slider-val" id="pitchVal">1.0</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label" id="lbl-volume">Volume</span>
+          <div class="slider-wrap"><input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1" oninput="updateSlider('volume',this.value)"></div>
+          <span class="slider-val" id="volumeVal">100%</span>
+        </div>
+      </div>
+
+      <!-- STATISTICS -->
+      <div class="sidebar-section">
+        <div class="sec-label" id="lbl-stats">📊 Estatísticas</div>
+        <div class="stats-row">
+          <div class="stat-chip"><span class="stat-val" id="statWords">0</span><span class="stat-lbl" id="lbl-stat-words">palavras</span></div>
+          <div class="stat-chip"><span class="stat-val" id="statWpm">—</span><span class="stat-lbl">WPM</span></div>
+          <div class="stat-chip"><span class="stat-val" id="statPct">0%</span><span class="stat-lbl" id="lbl-stat-read">lido</span></div>
+          <div class="stat-chip"><span class="stat-val" id="statEta">—</span><span class="stat-lbl" id="lbl-stat-left">restante</span></div>
+        </div>
+        <div class="export-row">
+          <button class="btn-export" onclick="exportText('page')" id="btn-export-page">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span id="lbl-btn-page">Pág.</span>
+          </button>
+          <button class="btn-export" onclick="exportText('all')" id="btn-export-all">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span id="lbl-btn-all">Tudo</span>
+          </button>
+          <button class="btn-export" onclick="copyPageText()" id="btn-copy">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            <span id="lbl-btn-copy">Copiar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- NOTES -->
+      <div class="sidebar-section">
+        <div class="section-flex">
+          <div class="sec-label" id="lbl-notes">📝 Notas</div>
+          <button class="icon-btn" id="notesToggleBtn" onclick="toggleNotes()">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="notes-panel" id="notesPanel">
+        <textarea class="notes-textarea" id="notesArea" oninput="saveNotes()"></textarea>
+        <div class="notes-actions">
+          <button class="btn-note-action" onclick="copyNotes()" id="btn-copy-notes">Copiar notas</button>
+          <button class="btn-note-action" onclick="clearNotes()" id="btn-clear-notes" style="color:var(--danger)">Limpar</button>
+        </div>
+      </div>
+
+    </div><!-- /sbPaneReading -->
+
+    <!-- ════ PANE: DOCS (BIBLIOTECA) ════ -->
+    <div class="sb-pane hidden" id="sbPaneDocs">
+      <div class="sidebar-section">
+        <div class="section-flex">
+          <div class="sec-label" id="lbl-library">📂 Biblioteca <span class="lib-count" id="libCount">0</span></div>
+        </div>
+      </div>
+      <div class="library-panel open" id="libraryPanel" style="max-height:none;flex:1;border-bottom:none;overflow-y:auto">
+        <div id="libList"><div class="lib-empty" id="lbl-lib-empty">Nenhum documento carregado</div></div>
+      </div>
+    </div><!-- /sbPaneDocs -->
+
+    <!-- ════ PANE: FAVORITOS ════ -->
+    <div class="sb-pane hidden" id="sbPaneFav">
+      <div class="sidebar-section">
+        <div class="section-flex">
+          <div class="sec-label" id="lbl-bookmarks">🔖 Favoritos</div>
+          <button class="icon-btn" title="Marcar página atual (M)" onclick="addBookmark()" style="font-size:13px;font-weight:700">＋</button>
+        </div>
+        <p style="font-size:11px;color:var(--text3);margin-top:6px" id="lbl-bm-hint">Pressione <kbd style="font-size:10px;background:var(--bg4);border:1px solid var(--border);border-radius:3px;padding:1px 5px;color:var(--accent)">M</kbd> para marcar a página atual</p>
+      </div>
+      <div class="bm-panel open" id="bmPanel" style="max-height:none;flex:1;border-bottom:none;overflow-y:auto">
+        <div id="bmList"><div class="bm-empty" id="lbl-bm-empty">Nenhum favorito ainda</div></div>
+      </div>
+    </div><!-- /sbPaneFav -->
+
+    <!-- ════ PANE: CONFIGURAÇÕES ════ -->
+    <div class="sb-pane hidden" id="sbPaneCfg">
+
+      <!-- VOZ & NARRAÇÃO -->
+      <div class="cfg-g">
+        <div class="cfg-gtitle">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          <span id="cfg-lbl-voice">Voz &amp; Narração</span>
+        </div>
+        <!-- COUNTRY PICKER -->
+        <div class="cfg-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+          <div class="cfg-lbl" id="cfg-lbl-country">Seu país / idioma
+            <span class="cfg-sub" id="cfg-sub-country">Filtra as vozes disponíveis no sistema</span>
+          </div>
+          <select class="country-picker" id="countryPicker" onchange="onCountryChange()">
+            <option value="">— Selecione seu país —</option>
+            <option value="pt-BR">🇧🇷 Brasil (Português)</option>
+            <option value="pt-PT">🇵🇹 Portugal (Português)</option>
+            <option value="en-US">🇺🇸 United States (English)</option>
+            <option value="en-GB">🇬🇧 United Kingdom (English)</option>
+            <option value="es-ES">🇪🇸 España (Español)</option>
+            <option value="es-MX">🇲🇽 México (Español)</option>
+            <option value="fr-FR">🇫🇷 France (Français)</option>
+            <option value="de-DE">🇩🇪 Deutschland (Deutsch)</option>
+            <option value="it-IT">🇮🇹 Italia (Italiano)</option>
+            <option value="ja-JP">🇯🇵 日本 (日本語)</option>
+            <option value="zh-CN">🇨🇳 中国 (中文)</option>
+            <option value="ko-KR">🇰🇷 한국 (한국어)</option>
+            <option value="ru-RU">🇷🇺 Россия (Русский)</option>
+            <option value="ar-SA">🇸🇦 العربية</option>
+            <option value="hi-IN">🇮🇳 India (हिन्दी)</option>
+            <option value="nl-NL">🇳🇱 Nederland (Nederlands)</option>
+            <option value="pl-PL">🇵🇱 Polska (Polski)</option>
+            <option value="tr-TR">🇹🇷 Türkiye (Türkçe)</option>
+            <option value="all">🌐 Mostrar todas as vozes</option>
+          </select>
+          <p class="voice-hint" id="voiceHintEl">Selecione seu país para carregar as vozes disponíveis.</p>
+        </div>
+        <!-- VOICE SELECT -->
+        <div class="cfg-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:4px">
+          <div class="cfg-lbl" id="cfg-lbl-voicesel">Voz selecionada</div>
+          <select class="voice-select" id="voiceSelect" onchange="onVoiceChange()">
+            <option value="" id="opt-voice-placeholder">Selecione um país acima…</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- APARÊNCIA -->
+      <div class="cfg-g">
+        <div class="cfg-gtitle">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 000 20"/></svg>
+          <span id="cfg-lbl-appearance">Aparência</span>
+        </div>
+        <div class="cfg-row">
+          <div class="cfg-lbl" id="cfg-lbl-theme">Tema</div>
+          <div style="display:flex;gap:5px">
+            <button class="cfg-sbtn" id="btnThemeDark" onclick="setTheme('dark')" style="width:32px;font-size:13px" title="Escuro">🌙</button>
+            <button class="cfg-sbtn" id="btnThemeLight" onclick="setTheme('light')" style="width:32px;font-size:13px" title="Claro">☀️</button>
+          </div>
+        </div>
+        <div class="cfg-row">
+          <div class="cfg-lbl" id="cfg-lbl-fontsize">Tamanho da fonte</div>
+          <div class="cfg-stepper">
+            <button class="cfg-sbtn" onclick="changeFontSize(-1)">−</button>
+            <span class="cfg-sval" id="fontSizeVal">15</span>
+            <button class="cfg-sbtn" onclick="changeFontSize(1)">+</button>
+          </div>
+        </div>
+        <div class="cfg-row">
+          <div class="cfg-lbl" id="cfg-lbl-spacing">Espaçamento de linha</div>
+          <div class="cfg-stepper">
+            <button class="cfg-sbtn" onclick="changeLineSpacing(-0.1)">−</button>
+            <span class="cfg-sval" id="lineSpacingVal">2.0</span>
+            <button class="cfg-sbtn" onclick="changeLineSpacing(0.1)">+</button>
+          </div>
+        </div>
+        <div class="cfg-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+          <div class="cfg-lbl" id="cfg-lbl-hlcolor">Cor de destaque</div>
+          <div class="cfg-swatches" id="hlColors">
+            <div class="cfg-sw active" style="background:#e8c97a" data-color="#e8c97a" onclick="setHlColor(this)" title="Dourado"></div>
+            <div class="cfg-sw" style="background:#7adfe8" data-color="#7adfe8" onclick="setHlColor(this)" title="Ciano"></div>
+            <div class="cfg-sw" style="background:#a0e87a" data-color="#a0e87a" onclick="setHlColor(this)" title="Verde"></div>
+            <div class="cfg-sw" style="background:#e87aaf" data-color="#e87aaf" onclick="setHlColor(this)" title="Rosa"></div>
+            <div class="cfg-sw" style="background:#b07ae8" data-color="#b07ae8" onclick="setHlColor(this)" title="Roxo"></div>
+            <div class="cfg-sw" style="background:#e8a07a" data-color="#e8a07a" onclick="setHlColor(this)" title="Laranja"></div>
+            <div class="cfg-sw" style="background:#ffffff" data-color="#ffffff" onclick="setHlColor(this)" title="Branco"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OPÇÕES DE LEITURA -->
+      <div class="cfg-g">
+        <div class="cfg-gtitle">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+          <span id="cfg-lbl-readopts">Opções de Leitura</span>
+        </div>
+        <div class="cfg-row"><div class="cfg-lbl" id="cfg-lbl-hl">Destacar palavra (texto)</div><div class="toggle on" id="highlightToggle" onclick="toggleOpt('highlight')"></div></div>
+        <div class="cfg-row"><div class="cfg-lbl" id="cfg-lbl-pdfhl">Destacar no PDF</div><div class="toggle on" id="pdfHighlightToggle" onclick="toggleOpt('pdfHighlight')"></div></div>
+        <div class="cfg-row"><div class="cfg-lbl" id="cfg-lbl-scroll">Auto-scroll texto</div><div class="toggle on" id="autoScrollToggle" onclick="toggleOpt('autoScroll')"></div></div>
+        <div class="cfg-row">
+          <div class="cfg-lbl" id="cfg-lbl-cont">Leitura contínua<span class="cfg-sub" id="cfg-sub-cont">Avança de página ao terminar</span></div>
+          <div class="toggle on" id="continueToggle" onclick="toggleOpt('continue')"></div>
+        </div>
+        <div class="cfg-row"><div class="cfg-lbl" id="cfg-lbl-punct">Pular pontuação</div><div class="toggle" id="skipPunctToggle" onclick="toggleOpt('skipPunct')"></div></div>
+        <div class="cfg-row">
+          <div class="cfg-lbl" id="cfg-lbl-guided">Leitura guiada (frases)<span class="cfg-sub" id="cfg-sub-guided">Lê frase por frase</span></div>
+          <div class="toggle" id="guidedToggle" onclick="toggleGuidedMode()"></div>
+        </div>
+        <!-- SLEEP TIMER -->
+        <div class="cfg-row" style="margin-top:4px">
+          <div class="cfg-lbl" id="cfg-lbl-sleep">Timer de sono<span class="cfg-sub" id="sleepTimerLabel"></span></div>
+          <select class="cfg-sel" id="sleepSelect" onchange="setSleepTimer(parseInt(this.value))">
+            <option value="0" id="opt-sleep-off">Desligado</option>
+            <option value="5">5 min</option>
+            <option value="10">10 min</option>
+            <option value="15">15 min</option>
+            <option value="20">20 min</option>
+            <option value="30">30 min</option>
+            <option value="45">45 min</option>
+            <option value="60">1 hora</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ATALHOS DE TECLADO -->
+      <div class="cfg-g">
+        <div class="cfg-gtitle">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></svg>
+          <span id="cfg-lbl-shortcuts">Atalhos de Teclado</span>
+        </div>
+        <div class="kbd-grid" id="kbdGrid">
+          <kbd>Espaço</kbd><span class="kbd-desc" id="kd-play">Play / Pausar narração</span>
+          <kbd>← →</kbd><span class="kbd-desc" id="kd-page">Página anterior / próxima</span>
+          <kbd>Esc</kbd><span class="kbd-desc" id="kd-stop">Parar narração</span>
+          <kbd>M</kbd><span class="kbd-desc" id="kd-thumb">Toggle miniaturas de página</span>
+          <kbd>K</kbd><span class="kbd-desc" id="kd-kara">Toggle Karaokê</span>
+          <kbd>B</kbd><span class="kbd-desc" id="kd-side">Mostrar / ocultar painel</span>
+          <kbd>R</kbd><span class="kbd-desc" id="kd-rsvp">Modo foco RSVP</span>
+          <kbd>F</kbd><span class="kbd-desc" id="kd-full">Tela cheia</span>
+          <kbd>T</kbd><span class="kbd-desc" id="kd-theme">Alternar tema claro/escuro</span>
+          <kbd>Ctrl+M</kbd><span class="kbd-desc" id="kd-bm">Marcar página como favorito</span>
+          <kbd>Ctrl+F</kbd><span class="kbd-desc" id="kd-search">Buscar no texto</span>
+          <kbd>+ / −</kbd><span class="kbd-desc" id="kd-zoom">Zoom do PDF</span>
+          <kbd>0</kbd><span class="kbd-desc" id="kd-zoomreset">Resetar zoom</span>
+          <kbd>Ctrl+Tab</kbd><span class="kbd-desc" id="kd-doc">Próximo documento</span>
+        </div>
+      </div>
+
+      <!-- SOBRE -->
+      <div class="cfg-g" style="border-bottom:none">
+        <div class="cfg-gtitle">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span id="cfg-lbl-about">Sobre</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3);line-height:1.7">
+          <div style="color:var(--accent);font-family:'Playfair Display',serif;font-size:16px;font-weight:700;margin-bottom:4px">LexPDF</div>
+          <span id="cfg-about-text">Leitor de PDF com Text-to-Speech, múltiplos documentos, sessão persistente e modo foco RSVP. Sessão salva automaticamente via IndexedDB.</span>
+        </div>
+      </div>
+
+    </div><!-- /sbPaneCfg -->
+
+    <!-- ════ FIXED BOTTOM: PLAYBACK + STATUS + PAGE NAV ════ -->
+    <div style="display:flex;flex-direction:column;flex-shrink:0;border-top:2px solid var(--border)">
+
+      <!-- PLAYBACK -->
+      <div class="playback-controls">
+        <button class="ctrl-btn" title="Página anterior (←)" onclick="changePage(-1)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="ctrl-btn" title="−10 palavras" onclick="skipWords(-10)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+        </button>
+        <button class="play-btn" id="playBtn" onclick="togglePlay()" title="Play/Pause (Espaço)">
+          <svg id="playIcon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </button>
+        <button class="ctrl-btn" title="+10 palavras" onclick="skipWords(10)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+        </button>
+        <button class="ctrl-btn" title="Próxima página (→)" onclick="changePage(1)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+
+      <!-- STATUS BAR -->
+      <div class="status-bar">
+        <div class="progress-track" onclick="seekProgress(event)" title="Clique para saltar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="status-info">
+          <span id="statusText">Pronto</span>
+          <div class="cw-block"><span class="cw-label" id="lbl-current-word">palavra atual</span><span class="cw-word" id="currentWordEl">—</span></div>
+        </div>
+      </div>
+
+      <!-- PAGE NAV -->
+      <div class="page-nav">
+        <span class="sec-label" style="margin:0;flex-shrink:0" id="lbl-page">Página</span>
+        <button class="page-nav-btn" onclick="changePage(-1)" id="prevBtn">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <input type="number" class="page-input" id="pageInput" value="1" min="1"
+          onchange="goToPage(this.value)" onkeydown="if(event.key==='Enter')goToPage(this.value)">
+        <span class="page-total" id="pageTotalEl">/ 0</span>
+        <button class="page-nav-btn" onclick="changePage(1)" id="nextBtn">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div style="flex:1"></div>
+        <button class="ctrl-btn" title="Parar leitura (Esc)" onclick="stopReading()" style="width:27px;height:27px;border-radius:7px">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        </button>
+      </div>
+
+    </div><!-- /fixed bottom -->
+
+    <!-- TEXT PANEL (flexible, fills remaining space) -->
+    <div class="text-panel" id="textPanel">
+      <div class="text-empty" id="textEmpty">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <p id="lbl-open-pdf">Abra um PDF para<br>começar a leitura</p>
+      </div>
+      <div id="textContent" class="text-content" style="display:none"></div>
+    </div>
+
+  </aside>
+
+  <!-- ══ VIEWER ══ -->
+  <main class="viewer" id="viewerMain">
+    <div class="viewer-toolbar">
+      <button class="view-btn active" id="btnViewSingle" onclick="setViewMode('single')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        Uma
+      </button>
+      <button class="view-btn" id="btnViewAll" onclick="setViewMode('all')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="9" height="10" rx="1"/><rect x="13" y="3" width="9" height="10" rx="1"/><rect x="2" y="15" width="9" height="6" rx="1"/><rect x="13" y="15" width="9" height="6" rx="1"/></svg>
+        Todas
+      </button>
+      <div class="tb-sep"></div>
+      <button class="view-btn" id="btnViewText" onclick="setViewMode('text')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="15" y2="18"/></svg>
+        Texto
+      </button>
+      <div class="tb-sep"></div>
+      <button class="k-toggle-btn" id="karaokeToggleBtn" onclick="toggleKaraoke()" title="Karaokê (K)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        Karaokê
+      </button>
+      <div class="tb-sep"></div>
+      <button class="view-btn" id="btnRsvp" onclick="openRsvp()" title="Modo foco RSVP (R)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Foco
+      </button>
+      <div class="tb-sep"></div>
+      <button class="view-btn" id="btnGuided" onclick="toggleGuidedMode()" title="Leitura guiada por frases">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h6"/></svg>
+        Guiada
+      </button>
+      <div class="tb-sep"></div>
+      <button class="view-btn" id="btnThumb" onclick="toggleThumbs()" title="Miniaturas">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      </button>
+      <div class="tb-sep"></div>
+      <button class="view-btn" id="btnSearch" onclick="toggleSearch()" title="Buscar (Ctrl+F)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      </button>
+      <button class="view-btn" id="btnFullscreen" onclick="toggleFullscreen()" title="Tela cheia (F)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      </button>
+      <button class="view-btn" id="btnTheme" onclick="toggleTheme()" title="Tema claro/escuro (T)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+      </button>
+      <div class="zoom-group">
+        <button class="zoom-btn" onclick="adjustZoom(-.15)" title="Diminuir zoom (−)">−</button>
+        <span class="zoom-level" id="zoomLevel">100%</span>
+        <button class="zoom-btn" onclick="adjustZoom(.15)" title="Aumentar zoom (+)">+</button>
+        <button class="zoom-btn" onclick="resetZoom()" style="font-size:10px;width:28px" title="Resetar zoom">Fit</button>
+      </div>
+    </div>
+
+    <!-- SEARCH BAR -->
+    <div class="search-bar" id="searchBar">
+      <input class="search-input" id="searchInput" placeholder="Buscar no texto…"
+        oninput="doSearch()" onkeydown="onSearchKey(event)">
+      <span class="search-count" id="searchCount">0 / 0</span>
+      <button class="search-nav-btn" onclick="searchNav(-1)" title="Anterior">↑</button>
+      <button class="search-nav-btn" onclick="searchNav(1)" title="Próximo">↓</button>
+      <button class="search-close" onclick="toggleSearch()">×</button>
+    </div>
+
+    <div class="viewer-inner">
+      <div class="canvas-container" id="canvasContainer">
+        <div class="upload-area" id="uploadArea"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="this.classList.remove('drag-over');handleFiles(event.dataTransfer.files)"
+          onclick="document.getElementById('fileInputMulti').click()">
+          <div class="upload-circle">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <path d="M12 12v6"/><path d="M9 15l3-3 3 3"/>
+            </svg>
+          </div>
+          <div class="upload-text">
+            <h3>Abra seus PDFs</h3>
+            <p>Arraste e solte um ou mais arquivos</p>
+            <div class="or">ou</div>
+          </div>
+          <button class="btn-browse" onclick="event.stopPropagation();document.getElementById('fileInputMulti').click()">Procurar arquivos</button>
+          <p class="supported-fmts">Múltiplos PDFs · persistência automática</p>
+        </div>
+      </div>
+      <!-- THUMBNAILS -->
+      <div id="thumbPanel"></div>
+    </div>
+
+    <div class="loading-overlay hidden" id="loadingOverlay">
+      <div class="spinner"></div>
+      <div class="loading-text" id="loadingText">Carregando…</div>
+    </div>
+
+    <!-- KARAOKE -->
+    <div id="karaokePanel">
+      <div class="karaoke-chip">
+        <div class="karaoke-header">
+          <div class="karaoke-title"><div class="k-dot"></div>Acompanhamento de leitura</div>
+          <button class="k-close" onclick="toggleKaraoke()">×</button>
+        </div>
+        <div class="karaoke-words" id="karaokeWords">
+          <span class="kw" style="color:var(--text3);font-size:13px">Inicie a leitura para ver o acompanhamento…</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+</div><!-- .app -->
+
+<!-- ══ MOBILE BOTTOM BAR ══ -->
+<div class="mobile-bottom-bar" id="mobileBar">
+  <button class="mb-btn" onclick="changePage(-1)" title="Pág. anterior">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <button class="mb-btn" onclick="skipWords(-10)" title="−10 palavras">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+  </button>
+  <button class="mb-btn mb-play" id="mbPlayBtn" onclick="togglePlay()">
+    <svg id="mbPlayIcon" width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+  </button>
+  <button class="mb-btn" onclick="skipWords(10)" title="+10 palavras">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+  </button>
+  <button class="mb-btn" onclick="changePage(1)" title="Pág. seguinte">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+  <button class="mb-menu" onclick="openMobileSheet()" title="Configurações">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M4.93 4.93A10 10 0 0 1 19.07 19.07"/></svg>
+  </button>
+</div>
+
+<!-- ══ MOBILE SETTINGS SHEET ══ -->
+<div id="mobileSheet" onclick="closeMobileSheet(event)">
+  <div class="sheet-inner" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+
+    <div class="sheet-section">
+      <div class="sheet-title">🎙 Voz & Áudio</div>
+      <select class="voice-select" id="voiceSelectMob" onchange="onVoiceChangeMob()" style="margin-bottom:10px"></select>
+      <div class="slider-row">
+        <span class="slider-label">Velocidade</span>
+        <div class="slider-wrap"><input type="range" id="speedSliderMob" min="0.3" max="3" step="0.05" value="1" oninput="syncSlider('speed',this.value)"></div>
+        <span class="slider-val" id="speedValMob">1.0×</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Volume</span>
+        <div class="slider-wrap"><input type="range" id="volumeSliderMob" min="0" max="1" step="0.05" value="1" oninput="syncSlider('volume',this.value)"></div>
+        <span class="slider-val" id="volumeValMob">100%</span>
+      </div>
+    </div>
+
+    <div class="sheet-section">
+      <div class="sheet-title">📄 Página</div>
+      <div class="sheet-row">
+        <span class="sheet-label">Ir para página</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="page-nav-btn" onclick="changePage(-1)">‹</button>
+          <input type="number" class="page-input" id="pageInputMob" value="1" min="1"
+            onchange="goToPage(this.value)" onkeydown="if(event.key==='Enter')goToPage(this.value)" style="width:46px">
+          <span style="font-size:12px;color:var(--text3)" id="pageTotalMob">/ 0</span>
+          <button class="page-nav-btn" onclick="changePage(1)">›</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-section">
+      <div class="sheet-title">⚙️ Opções</div>
+      <div class="sheet-row"><span class="sheet-label">Destacar palavra</span><div class="toggle on" id="highlightToggleMob" onclick="toggleOptMob('highlight')"></div></div>
+      <div class="sheet-row"><span class="sheet-label">Destacar no PDF</span><div class="toggle on" id="pdfHighlightToggleMob" onclick="toggleOptMob('pdfHighlight')"></div></div>
+      <div class="sheet-row"><span class="sheet-label">Auto-scroll</span><div class="toggle on" id="autoScrollToggleMob" onclick="toggleOptMob('autoScroll')"></div></div>
+      <div class="sheet-row"><span class="sheet-label">Leitura contínua</span><div class="toggle on" id="continueToggleMob" onclick="toggleOptMob('continue')"></div></div>
+      <div class="sheet-row"><span class="sheet-label">Pular pontuação</span><div class="toggle" id="skipPunctToggleMob" onclick="toggleOptMob('skipPunct')"></div></div>
+    </div>
+
+    <div class="sheet-section">
+      <div class="sheet-title">🎨 Aparência</div>
+      <div class="sheet-row">
+        <span class="sheet-label">Tamanho da fonte</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="fs-btn" onclick="changeFontSize(-1)">A−</button>
+          <span class="fs-val" id="fontSizeValMob">15</span>
+          <button class="fs-btn" onclick="changeFontSize(1)">A+</button>
+        </div>
+      </div>
+      <div class="sheet-row">
+        <span class="sheet-label">Tema</span>
+        <button class="icon-btn" onclick="toggleTheme()" style="width:auto;padding:0 10px;gap:5px;font-size:12px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/></svg>
+          Claro/Escuro
+        </button>
+      </div>
+      <div class="sheet-row">
+        <span class="sheet-label">Zoom PDF</span>
+        <div style="display:flex;align-items:center;gap:5px">
+          <button class="zoom-btn" onclick="adjustZoom(-.15)">−</button>
+          <span class="zoom-level" id="zoomLevelMob" style="color:var(--text)">100%</span>
+          <button class="zoom-btn" onclick="adjustZoom(.15)">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-section">
+      <div class="sheet-title">📊 Estatísticas</div>
+      <div class="stats-row">
+        <div class="stat-chip"><span class="stat-val" id="statWordsMob">0</span><span class="stat-lbl">palavras</span></div>
+        <div class="stat-chip"><span class="stat-val" id="statWpmMob">—</span><span class="stat-lbl">WPM</span></div>
+        <div class="stat-chip"><span class="stat-val" id="statPctMob">0%</span><span class="stat-lbl">lido</span></div>
+        <div class="stat-chip"><span class="stat-val" id="statEtaMob">—</span><span class="stat-lbl">restante</span></div>
+      </div>
+    </div>
+
+    <div class="sheet-section">
+      <div class="sheet-title">🛠 Ferramentas</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-export" onclick="openRsvp();closeMobileSheet()" style="flex:1;min-width:80px">Modo Foco</button>
+        <button class="btn-export" onclick="toggleKaraoke();closeMobileSheet()" style="flex:1;min-width:80px">Karaokê</button>
+        <button class="btn-export" onclick="toggleSearch();closeMobileSheet()" style="flex:1;min-width:80px">Buscar</button>
+        <button class="btn-export" onclick="addBookmark();closeMobileSheet()" style="flex:1;min-width:80px">Marcar pág.</button>
+        <button class="btn-export" onclick="exportText('page');closeMobileSheet()" style="flex:1;min-width:80px">Exportar</button>
+        <button class="btn-export" onclick="copyPageText();closeMobileSheet()" style="flex:1;min-width:80px">Copiar</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══ MOBILE LIBRARY SHEET ══ -->
+<div id="mobileLibSheet" onclick="closeMobileLib(event)">
+  <div class="lib-sheet-inner" onclick="event.stopPropagation()">
+    <div class="lib-sheet-header">
+      <span class="lib-sheet-title">📂 Arquivos <span class="lib-count" id="libCountMob" style="font-size:12px;background:var(--bg4);padding:1px 7px;border-radius:10px">0</span></span>
+      <button class="lib-sheet-close" onclick="closeMobileLib()">×</button>
+    </div>
+    <div class="lib-sheet-body" id="libSheetBody">
+      <div class="lib-empty">Nenhum documento carregado</div>
+    </div>
+    <div class="lib-sheet-add">
+      <button class="btn-add" onclick="document.getElementById('fileInputMulti').click();closeMobileLib()" style="width:100%;justify-content:center">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Adicionar PDFs
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RSVP OVERLAY ══ -->
+<div id="rsvpOverlay">
+  <button class="rsvp-close-btn" onclick="closeRsvp()">×</button>
+  <div class="rsvp-guide">MODO FOCO — UMA PALAVRA POR VEZ</div>
+  <div class="rsvp-word" id="rsvpWord">—</div>
+  <div class="rsvp-progress"><div class="rsvp-progress-fill" id="rsvpFill"></div></div>
+  <div class="rsvp-info">
+    <span id="rsvpPos">0 / 0</span>
+    <span id="rsvpWpmDisplay">— WPM</span>
+  </div>
+  <div class="rsvp-wpm-row">
+    <span class="rsvp-wpm-label">WPM</span>
+    <input type="range" id="rsvpWpmSlider" min="60" max="800" step="10" value="250"
+      oninput="updateRsvpWpm(this.value)" style="width:160px">
+    <span class="slider-val" id="rsvpWpmVal">250</span>
+  </div>
+  <div class="rsvp-controls">
+    <button class="rsvp-btn" onclick="rsvpSkip(-10)">−10</button>
+    <button class="rsvp-btn accent" id="rsvpPlayBtn" onclick="toggleRsvp()">▶ Iniciar</button>
+    <button class="rsvp-btn" onclick="rsvpSkip(10)">+10</button>
+  </div>
+</div>
+
+<!-- ══ CONTEXT MENU ══ -->
+<div id="ctxMenu">
+  <div class="ctx-item" onclick="ctxAction('readFromHere')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    Ler a partir daqui
+  </div>
+  <div class="ctx-item" onclick="ctxAction('copy')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+    Copiar palavra
+  </div>
+  <div class="ctx-item" onclick="ctxAction('dict')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+    Buscar no dicionário
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="ctxAction('search')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    Buscar no texto
+  </div>
+  <div class="ctx-item" onclick="ctxAction('bookmark')">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+    Marcar página
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════ -->
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── STATE ────────────────────────────────────────────────────────
+const docs = [];
+let activeDocId   = null;
+let docIdCounter  = 0;
+let zoom          = 1.0;
+let viewMode      = 'single';
+let words         = [];
+let wordIndex     = 0;
+let isPlaying     = false;
+let utterance     = null;
+let voices        = [];
+let opts = { highlight:true, pdfHighlight:true, autoScroll:true, continue:true, skipPunct:false };
+let karaokeVisible = false;
+let karaokeWords   = [];
+let karaokeOffset  = 0;
+let libraryOpen    = false;
+let sidebarHidden  = false;
+let isDark         = true;
+let fontSize       = 15;
+let lineSpacing    = 2.0;
+let hlColor        = '#e8c97a';
+let bookmarks      = {};
+let notesData      = {};
+let bmOpen         = false;
+let notesOpen      = false;
+let searchResults  = [];
+let searchIdx      = 0;
+let searchOpen     = false;
+let thumbsBuilt    = false;
+let thumbsOpen     = false;
+let rsvpActive  = false;
+let rsvpPlaying = false;
+let rsvpIdx     = 0;
+let rsvpTimer   = null;
+let rsvpWpm     = 250;
+let readingStartTime = null;
+let wordsReadCount   = 0;
+let liveWpm          = 0;
+let ctxWordIdx = -1;
+const pdfTextCache = {};
+
+function activeDoc() { return docs.find(d => d.id === activeDocId) || null; }
+
+// ── DB ─────────────────────────────────────────────────────────
+const DB_NAME = 'lexpdf_db', DB_VERSION = 1, STORE_PDFS = 'pdfs';
+let db = null;
+
+function openDB() {
+  return new Promise((res,rej) => {
+    const r = indexedDB.open(DB_NAME, DB_VERSION);
+    r.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE_PDFS))
+        d.createObjectStore(STORE_PDFS, { keyPath:'id' });
+    };
+    r.onsuccess = e => { db = e.target.result; res(db); };
+    r.onerror   = e => rej(e.target.error);
+  });
+}
+async function dbSaveDoc(doc, buf) {
+  return new Promise((res,rej) => {
+    const tx = db.transaction(STORE_PDFS,'readwrite');
+    tx.objectStore(STORE_PDFS).put({
+      id:doc.id, name:doc.name, totalPages:doc.totalPages,
+      currentPage:doc.currentPage, allPagesText:doc.allPagesText, buffer:buf
+    });
+    tx.oncomplete = () => res();
+    tx.onerror = e => rej(e.target.error);
+  });
+}
+async function dbUpdateMeta(doc) {
+  return new Promise((res,rej) => {
+    const tx = db.transaction(STORE_PDFS,'readwrite');
+    const st = tx.objectStore(STORE_PDFS);
+    const r  = st.get(doc.id);
+    r.onsuccess = e => {
+      const rec = e.target.result; if (!rec) { res(); return; }
+      rec.currentPage = doc.currentPage; st.put(rec);
+    };
+    tx.oncomplete = () => res();
+    tx.onerror = e => rej(e.target.error);
+  });
+}
+async function dbLoadAll() {
+  return new Promise((res,rej) => {
+    const tx = db.transaction(STORE_PDFS,'readonly');
+    const r  = tx.objectStore(STORE_PDFS).getAll();
+    r.onsuccess = e => res(e.target.result || []);
+    r.onerror   = e => rej(e.target.error);
+  });
+}
+async function dbRemoveDoc(id) {
+  return new Promise((res,rej) => {
+    const tx = db.transaction(STORE_PDFS,'readwrite');
+    tx.objectStore(STORE_PDFS).delete(id);
+    tx.oncomplete = () => res();
+    tx.onerror = e => rej(e.target.error);
+  });
+}
+
+// ── PREFS ───────────────────────────────────────────────────────
+function savePrefs() {
+  try {
+    localStorage.setItem('lexpdf_prefs', JSON.stringify({
+      zoom, viewMode, opts, libraryOpen, karaokeVisible, activeDocId,
+      docIdCounter, sidebarHidden, isDark, fontSize, lineSpacing, hlColor,
+      bookmarks, notesData, rsvpWpm, bmOpen, notesOpen, guidedMode, selectedCountry,
+      voiceName : document.getElementById('voiceSelect').value,
+      speed     : document.getElementById('speedSlider').value,
+      pitch     : document.getElementById('pitchSlider').value,
+      volume    : document.getElementById('volumeSlider').value,
+      docOrder  : docs.map(d => d.id),
+    }));
+  } catch(_) {}
+}
+
+function loadPrefs() {
+  try { const r = localStorage.getItem('lexpdf_prefs'); return r ? JSON.parse(r) : null; }
+  catch(_) { return null; }
+}
+
+function applyPrefs(p) {
+  if (!p) return;
+  if (p.zoom)        { zoom = p.zoom; syncZoomDisplay(); }
+  if (p.fontSize)    { fontSize = p.fontSize; document.getElementById('fontSizeVal').textContent = fontSize; document.getElementById('fontSizeValMob').textContent = fontSize; }
+  if (p.lineSpacing) { lineSpacing = p.lineSpacing; document.getElementById('lineSpacingVal').textContent = lineSpacing.toFixed(1); }
+  if (p.hlColor && p.hlColor !== hlColor) { hlColor = p.hlColor; applyHlColor(); document.querySelectorAll('.hl-swatch').forEach(s => s.classList.toggle('active', s.dataset.color === hlColor)); }
+  if (p.isDark !== undefined && !p.isDark) { isDark = false; document.body.classList.add('light'); }
+
+  const sliders = [
+    ['speed','speedVal','speedSlider','×',2],
+    ['pitch','pitchVal','pitchSlider','',2],
+    ['volume','volumeVal','volumeSlider','%',0],
+  ];
+  sliders.forEach(([k,vId,sId,sfx,dec]) => {
+    if (p[k] == null) return;
+    document.getElementById(sId).value = p[k];
+    const n = parseFloat(p[k]);
+    const txt = sfx==='%' ? Math.round(n*100)+'%' : n.toFixed(dec)+(sfx?sfx:'');
+    document.getElementById(vId).textContent = txt;
+  });
+  syncMobileSliders();
+
+  if (p.voiceName) {
+    const trySet = () => {
+      const sel = document.getElementById('voiceSelect');
+      const opt = [...sel.options].find(o => o.value === p.voiceName);
+      if (opt) { sel.value = p.voiceName; syncMobileVoice(); }
+    };
+    trySet(); setTimeout(trySet, 800);
+  }
+  if (p.opts)   { opts = {...opts,...p.opts}; refreshToggles(); }
+  if (p.bookmarks) bookmarks = p.bookmarks;
+  if (p.notesData) notesData = p.notesData;
+  if (p.rsvpWpm)   { rsvpWpm = p.rsvpWpm; document.getElementById('rsvpWpmSlider').value = rsvpWpm; document.getElementById('rsvpWpmVal').textContent = rsvpWpm; }
+
+  if (p.libraryOpen) { libraryOpen = true; }
+  if (p.bmOpen) { bmOpen = true; }
+  if (p.notesOpen) {
+    notesOpen = true;
+    document.getElementById('notesPanel').classList.add('open');
+    const ntb = document.getElementById('notesToggleBtn');
+    if (ntb) ntb.classList.add('on');
+  }
+  if (p.selectedCountry) {
+    selectedCountry = p.selectedCountry;
+    const cp = document.getElementById('countryPicker');
+    if (cp) { cp.value = p.selectedCountry; loadVoicesForCountry(p.selectedCountry); applyI18n(p.selectedCountry); }
+  }
+  if (p.karaokeVisible) {
+    karaokeVisible = true;
+    document.getElementById('karaokePanel').classList.add('visible');
+    document.getElementById('karaokeToggleBtn').classList.add('active');
+  }
+  if (p.sidebarHidden) {
+    sidebarHidden = true;
+    document.getElementById('app').classList.add('sidebar-hidden');
+  }
+  if (p.guidedMode) { guidedMode = true; refreshToggles(); }
+}
+
+function refreshToggles() {
+  ['highlight','pdfHighlight','autoScroll','continue','skipPunct'].forEach(k => {
+    const d = document.getElementById(k+'Toggle');
+    const m = document.getElementById(k+'ToggleMob');
+    if (d) d.classList.toggle('on', opts[k]);
+    if (m) m.classList.toggle('on', opts[k]);
+  });
+  const gt = document.getElementById('guidedToggle');
+  if (gt) gt.classList.toggle('on', guidedMode);
+  const gb = document.getElementById('btnGuided');
+  if (gb) gb.classList.toggle('active', guidedMode);
+}
+
+// ── SESSION RESTORE ─────────────────────────────────────────────
+async function restoreSession() {
+  const prefs = loadPrefs();
+  try {
+    const saved = await dbLoadAll();
+    if (!saved.length) { applyPrefs(prefs); return; }
+    const order = prefs?.docOrder || saved.map(r => r.id);
+    saved.sort((a,b) => {
+      const ia = order.indexOf(a.id), ib = order.indexOf(b.id);
+      return (ia===-1?999:ia)-(ib===-1?999:ib);
+    });
+    showLoading('Restaurando sessão…');
+    for (const rec of saved) {
+      try {
+        updateLoading(`Restaurando "${rec.name}"…`);
+        const pdfDoc = await pdfjsLib.getDocument({ data: rec.buffer }).promise;
+        docs.push({ id:rec.id, name:rec.name, pdfDoc,
+          totalPages:rec.totalPages, currentPage:rec.currentPage||1,
+          allPagesText:rec.allPagesText, buffer:rec.buffer });
+        if (rec.id > docIdCounter) docIdCounter = rec.id;
+      } catch(_) {}
+    }
+    hideLoading();
+    applyPrefs(prefs);
+    renderTabs(); renderLibrary();
+    const tid = prefs?.activeDocId && docs.find(d=>d.id===prefs.activeDocId)
+      ? prefs.activeDocId : docs[0]?.id;
+    if (tid) await switchDoc(tid);
+    if (prefs?.viewMode && prefs.viewMode!=='single') await setViewMode(prefs.viewMode);
+    if (docs.length) showToast(`${docs.length} doc${docs.length>1?'s':''} restaurado${docs.length>1?'s':''} ✓`,'success');
+  } catch(err) {
+    hideLoading();
+    console.warn('Erro ao restaurar:', err);
+    applyPrefs(prefs);
+  }
+}
+
+// ── SIDEBAR ─────────────────────────────────────────────────────
+function toggleSidebar() {
+  const app = document.getElementById('app');
+  const mob = window.innerWidth <= 680;
+  if (mob) {
+    const open = app.classList.toggle('sidebar-visible');
+    sidebarHidden = !open;
+  } else {
+    sidebarHidden = !sidebarHidden;
+    app.classList.toggle('sidebar-hidden', sidebarHidden);
+  }
+  savePrefs();
+}
+document.getElementById('app').addEventListener('click', e => {
+  const app = document.getElementById('app');
+  if (window.innerWidth > 680 || !app.classList.contains('sidebar-visible')) return;
+  if (!document.getElementById('sidebar').contains(e.target) &&
+      !document.getElementById('sidebarToggleBtn').contains(e.target))
+    app.classList.remove('sidebar-visible');
+});
+
+// ── MOBILE SHEETS ───────────────────────────────────────────────
+function openMobileSheet() {
+  syncMobileSliders();
+  syncMobileVoice();
+  document.getElementById('mobileSheet').classList.add('open');
+}
+function closeMobileSheet(e) {
+  if (!e || e.target === document.getElementById('mobileSheet'))
+    document.getElementById('mobileSheet').classList.remove('open');
+}
+function openMobileLib() {
+  renderMobileLib();
+  document.getElementById('mobileLibSheet').classList.add('open');
+}
+function closeMobileLib(e) {
+  if (!e || e.target === document.getElementById('mobileLibSheet'))
+    document.getElementById('mobileLibSheet').classList.remove('open');
+}
+function renderMobileLib() {
+  document.getElementById('libCountMob').textContent = docs.length;
+  const body = document.getElementById('libSheetBody');
+  if (!docs.length) { body.innerHTML = '<div class="lib-empty">Nenhum documento carregado</div>'; return; }
+  body.innerHTML = docs.map(doc => `
+    <div class="lib-sheet-item${doc.id===activeDocId?' active-doc':''}" onclick="switchDoc(${doc.id});closeMobileLib()">
+      <div class="lib-sheet-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        </svg>
+      </div>
+      <div style="flex:1;overflow:hidden">
+        <div class="lib-sheet-name">${esc(doc.name)}</div>
+        <div class="lib-sheet-meta">${doc.totalPages} pág. · p.${doc.currentPage}</div>
+      </div>
+      <div class="lib-sheet-del" onclick="event.stopPropagation();removeDoc(${doc.id})" title="Remover">×</div>
+    </div>`).join('');
+}
+function syncMobileSliders() {
+  ['speed','volume'].forEach(k => {
+    const src = document.getElementById(k+'Slider');
+    const dst = document.getElementById(k+'SliderMob');
+    const vd  = document.getElementById(k+'ValMob');
+    if (!src||!dst||!vd) return;
+    dst.value = src.value;
+    const n = parseFloat(src.value);
+    vd.textContent = k==='volume' ? Math.round(n*100)+'%' : n.toFixed(2)+'×';
+  });
+  const pi = document.getElementById('pageInput');
+  const pm = document.getElementById('pageInputMob');
+  const pt = document.getElementById('pageTotalMob');
+  if (pi && pm) pm.value = pi.value;
+  if (pt) pt.textContent = document.getElementById('pageTotalEl').textContent;
+  syncZoomDisplay();
+  ['highlight','pdfHighlight','autoScroll','continue','skipPunct'].forEach(k => {
+    const m = document.getElementById(k+'ToggleMob');
+    if (m) m.classList.toggle('on', opts[k]);
+  });
+  document.getElementById('fontSizeValMob').textContent = fontSize;
+  // sync stats
+  ['Words','Wpm','Pct','Eta'].forEach(k => {
+    const src = document.getElementById('stat'+k);
+    const dst = document.getElementById('stat'+k+'Mob');
+    if (src && dst) dst.textContent = src.textContent;
+  });
+}
+function syncMobileVoice() {
+  const src = document.getElementById('voiceSelect');
+  const dst = document.getElementById('voiceSelectMob');
+  if (!src || !dst || !src.options.length) return;
+  dst.innerHTML = src.innerHTML;
+  dst.value = src.value;
+}
+function syncSlider(type, val) {
+  const n = parseFloat(val);
+  // update main slider
+  const mainSlider = document.getElementById(type+'Slider');
+  const mainVal    = document.getElementById(type+'Val');
+  if (mainSlider) mainSlider.value = val;
+  if (mainVal) mainVal.textContent = type==='volume' ? Math.round(n*100)+'%' : n.toFixed(2)+'×';
+  document.getElementById(type+'ValMob').textContent = type==='volume' ? Math.round(n*100)+'%' : n.toFixed(2)+'×';
+  if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); }
+  savePrefs();
+}
+function onVoiceChangeMob() {
+  const mob = document.getElementById('voiceSelectMob');
+  document.getElementById('voiceSelect').value = mob.value;
+  if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); }
+  savePrefs();
+}
+function toggleOptMob(k) {
+  opts[k] = !opts[k];
+  document.getElementById(k+'Toggle').classList.toggle('on', opts[k]);
+  document.getElementById(k+'ToggleMob').classList.toggle('on', opts[k]);
+  savePrefs();
+}
+function syncZoomDisplay() {
+  const t = Math.round(zoom*100)+'%';
+  document.getElementById('zoomLevel').textContent = t;
+  const m = document.getElementById('zoomLevelMob');
+  if (m) m.textContent = t;
+}
+// show mobile lib button on mobile
+function updateMobileHeaderButtons() {
+  const mob = window.innerWidth <= 680;
+  document.getElementById('mobileLibBtn').style.display = mob ? 'flex' : 'none';
+}
+updateMobileHeaderButtons();
+window.addEventListener('resize', updateMobileHeaderButtons);
+
+// ── SIDEBAR INNER TABS ──────────────────────────────────────────
+let activeSbTab = 'reading';
+function switchSbTab(tab) {
+  activeSbTab = tab;
+  ['reading','docs','fav','cfg'].forEach(t => {
+    const btn  = document.getElementById('sbTab' + t.charAt(0).toUpperCase() + t.slice(1));
+    const pane = document.getElementById('sbPane' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (btn)  btn.classList.toggle('active', t === tab);
+    if (pane) pane.classList.toggle('hidden', t !== tab);
+  });
+  savePrefs();
+}
+
+// ── THEME ────────────────────────────────────────────────────────
+function setTheme(theme) {
+  isDark = (theme === 'dark');
+  document.body.classList.toggle('light', !isDark);
+  const d = document.getElementById('btnThemeDark');
+  const l = document.getElementById('btnThemeLight');
+  if (d) d.style.opacity = isDark  ? '1' : '0.45';
+  if (l) l.style.opacity = !isDark ? '1' : '0.45';
+  savePrefs();
+}
+function toggleTheme() { setTheme(isDark ? 'light' : 'dark'); }
+
+// ── COUNTRY → VOICE ──────────────────────────────────────────────
+let selectedCountry = '';
+
+// Per-country translations for key UI strings
+const I18N = {
+  'pt-BR': {
+    placeholder: 'Selecione um país acima…', hint_none: 'Selecione seu país para carregar as vozes.',
+    hint_ok: (n, lbl) => `${n} voz${n>1?'es':''} encontrada${n>1?'s':''} para ${lbl}.`,
+    hint_miss: (lbl) => `Nenhuma voz para ${lbl} encontrada. Instale vozes nas configurações do seu sistema.`,
+    audio: '⚙️ Configurações de Áudio', speed: 'Velocidade', pitch: 'Tom', volume: 'Volume',
+    stats: '📊 Estatísticas', words: 'palavras', read: 'lido', left: 'restante',
+    page_btn: 'Pág.', all_btn: 'Tudo', copy_btn: 'Copiar',
+    notes: '📝 Notas', copy_notes: 'Copiar notas', clear_notes: 'Limpar',
+    library: '📂 Biblioteca', lib_empty: 'Nenhum documento carregado',
+    bookmarks: '🔖 Favoritos', bm_empty: 'Nenhum favorito ainda',
+    bm_hint: 'Pressione M para marcar a página atual',
+    page: 'Página', current_word: 'palavra atual', open_pdf: 'Abra um PDF para\ncomeçar a leitura',
+    cfg_voice: 'Voz & Narração', cfg_country: 'Seu país / idioma', cfg_country_sub: 'Filtra as vozes disponíveis no sistema',
+    cfg_voicesel: 'Voz selecionada', cfg_appearance: 'Aparência', cfg_theme: 'Tema',
+    cfg_fontsize: 'Tamanho da fonte', cfg_spacing: 'Espaçamento de linha', cfg_hlcolor: 'Cor de destaque',
+    cfg_readopts: 'Opções de Leitura', cfg_hl: 'Destacar palavra (texto)', cfg_pdfhl: 'Destacar no PDF',
+    cfg_scroll: 'Auto-scroll texto', cfg_cont: 'Leitura contínua', cfg_cont_sub: 'Avança de página ao terminar',
+    cfg_punct: 'Pular pontuação', cfg_guided: 'Leitura guiada (frases)', cfg_guided_sub: 'Lê frase por frase',
+    cfg_sleep: 'Timer de sono', cfg_shortcuts: 'Atalhos de Teclado', cfg_about: 'Sobre',
+    cfg_about_text: 'Leitor de PDF com Text-to-Speech, múltiplos documentos, sessão persistente e modo foco RSVP. Sessão salva automaticamente via IndexedDB.',
+    kd: { play:'Play / Pausar narração', page:'Página anterior / próxima', stop:'Parar narração',
+      thumb:'Toggle miniaturas de página', kara:'Toggle Karaokê', side:'Mostrar / ocultar painel',
+      rsvp:'Modo foco RSVP', full:'Tela cheia', theme:'Alternar tema claro/escuro',
+      bm:'Marcar página como favorito', search:'Buscar no texto', zoom:'Zoom do PDF',
+      zoomreset:'Resetar zoom', doc:'Próximo documento' },
+    sleep_off: 'Desligado',
+  },
+  'pt-PT': { placeholder:'Selecione um país acima…', hint_none:'Selecione o seu país para carregar as vozes.',
+    hint_ok:(n,lbl)=>`${n} voz${n>1?'es':''} encontrada${n>1?'s':''} para ${lbl}.`,
+    hint_miss:(lbl)=>`Nenhuma voz para ${lbl}. Instale vozes nas configurações do seu sistema.`,
+    audio:'⚙️ Configurações de Áudio', speed:'Velocidade', pitch:'Tom', volume:'Volume',
+    stats:'📊 Estatísticas', words:'palavras', read:'lido', left:'restante',
+    page_btn:'Pág.', all_btn:'Tudo', copy_btn:'Copiar',
+    notes:'📝 Notas', copy_notes:'Copiar notas', clear_notes:'Limpar',
+    library:'📂 Biblioteca', lib_empty:'Nenhum documento carregado',
+    bookmarks:'🔖 Favoritos', bm_empty:'Sem favoritos ainda', bm_hint:'Prima M para marcar a página',
+    page:'Página', current_word:'palavra actual', open_pdf:'Abra um PDF para\ncomeçar a leitura',
+    cfg_voice:'Voz & Narração', cfg_country:'País / idioma', cfg_country_sub:'Filtra as vozes disponíveis',
+    cfg_voicesel:'Voz seleccionada', cfg_appearance:'Aparência', cfg_theme:'Tema',
+    cfg_fontsize:'Tamanho da fonte', cfg_spacing:'Espaçamento de linha', cfg_hlcolor:'Cor de destaque',
+    cfg_readopts:'Opções de Leitura', cfg_hl:'Realçar palavra (texto)', cfg_pdfhl:'Realçar no PDF',
+    cfg_scroll:'Auto-scroll', cfg_cont:'Leitura contínua', cfg_cont_sub:'Avança de página ao terminar',
+    cfg_punct:'Saltar pontuação', cfg_guided:'Leitura guiada (frases)', cfg_guided_sub:'Lê frase a frase',
+    cfg_sleep:'Temporizador de sono', cfg_shortcuts:'Atalhos de Teclado', cfg_about:'Sobre',
+    cfg_about_text:'Leitor de PDF com Text-to-Speech, múltiplos documentos e modo foco RSVP.',
+    kd:{play:'Play / Pausar',page:'Página anterior / próxima',stop:'Parar',thumb:'Miniaturas',
+      kara:'Karaokê',side:'Painel',rsvp:'Modo Foco',full:'Ecrã inteiro',theme:'Tema',
+      bm:'Marcar página',search:'Pesquisar',zoom:'Zoom PDF',zoomreset:'Reset zoom',doc:'Próx. documento'},
+    sleep_off:'Desligado',
+  },
+  'en-US': { placeholder:'Select a country above…', hint_none:'Select your country to load available voices.',
+    hint_ok:(n,lbl)=>`${n} voice${n>1?'s':''} found for ${lbl}.`,
+    hint_miss:(lbl)=>`No voices found for ${lbl}. Install voices in your system settings.`,
+    audio:'⚙️ Audio Settings', speed:'Speed', pitch:'Pitch', volume:'Volume',
+    stats:'📊 Statistics', words:'words', read:'read', left:'left',
+    page_btn:'Page', all_btn:'All', copy_btn:'Copy',
+    notes:'📝 Notes', copy_notes:'Copy notes', clear_notes:'Clear',
+    library:'📂 Library', lib_empty:'No documents loaded',
+    bookmarks:'🔖 Bookmarks', bm_empty:'No bookmarks yet', bm_hint:'Press M to bookmark current page',
+    page:'Page', current_word:'current word', open_pdf:'Open a PDF to\nstart reading',
+    cfg_voice:'Voice & Narration', cfg_country:'Your country / language', cfg_country_sub:'Filters available system voices',
+    cfg_voicesel:'Selected voice', cfg_appearance:'Appearance', cfg_theme:'Theme',
+    cfg_fontsize:'Font size', cfg_spacing:'Line spacing', cfg_hlcolor:'Highlight color',
+    cfg_readopts:'Reading Options', cfg_hl:'Highlight word (text)', cfg_pdfhl:'Highlight in PDF',
+    cfg_scroll:'Auto-scroll text', cfg_cont:'Continuous reading', cfg_cont_sub:'Advances page when done',
+    cfg_punct:'Skip punctuation', cfg_guided:'Guided reading (sentences)', cfg_guided_sub:'Reads sentence by sentence',
+    cfg_sleep:'Sleep timer', cfg_shortcuts:'Keyboard Shortcuts', cfg_about:'About',
+    cfg_about_text:'PDF reader with Text-to-Speech, multiple documents, persistent session and RSVP focus mode.',
+    kd:{play:'Play / Pause narration',page:'Previous / next page',stop:'Stop narration',
+      thumb:'Toggle page thumbnails',kara:'Toggle Karaoke',side:'Show / hide panel',
+      rsvp:'RSVP focus mode',full:'Fullscreen',theme:'Toggle light/dark theme',
+      bm:'Bookmark current page',search:'Search text',zoom:'PDF Zoom',zoomreset:'Reset zoom',doc:'Next document'},
+    sleep_off:'Off',
+  },
+  'en-GB': { placeholder:'Select a country above…', hint_none:'Select your country to load voices.',
+    hint_ok:(n,lbl)=>`${n} voice${n>1?'s':''} found for ${lbl}.`,
+    hint_miss:(lbl)=>`No voices found for ${lbl}. Please install voices in your system settings.`,
+    audio:'⚙️ Audio Settings', speed:'Speed', pitch:'Pitch', volume:'Volume',
+    stats:'📊 Statistics', words:'words', read:'read', left:'remaining',
+    page_btn:'Page', all_btn:'All', copy_btn:'Copy',
+    notes:'📝 Notes', copy_notes:'Copy notes', clear_notes:'Clear',
+    library:'📂 Library', lib_empty:'No documents loaded',
+    bookmarks:'🔖 Bookmarks', bm_empty:'No bookmarks yet', bm_hint:'Press M to bookmark current page',
+    page:'Page', current_word:'current word', open_pdf:'Open a PDF to\nstart reading',
+    cfg_voice:'Voice & Narration', cfg_country:'Your country / language', cfg_country_sub:'Filters available system voices',
+    cfg_voicesel:'Selected voice', cfg_appearance:'Appearance', cfg_theme:'Theme',
+    cfg_fontsize:'Font size', cfg_spacing:'Line spacing', cfg_hlcolor:'Highlight colour',
+    cfg_readopts:'Reading Options', cfg_hl:'Highlight word (text)', cfg_pdfhl:'Highlight in PDF',
+    cfg_scroll:'Auto-scroll text', cfg_cont:'Continuous reading', cfg_cont_sub:'Advances page when finished',
+    cfg_punct:'Skip punctuation', cfg_guided:'Guided reading (sentences)', cfg_guided_sub:'Reads sentence by sentence',
+    cfg_sleep:'Sleep timer', cfg_shortcuts:'Keyboard Shortcuts', cfg_about:'About',
+    cfg_about_text:'PDF reader with Text-to-Speech, multiple documents, persistent session and RSVP focus mode.',
+    kd:{play:'Play / Pause narration',page:'Previous / next page',stop:'Stop narration',
+      thumb:'Toggle page thumbnails',kara:'Toggle Karaoke',side:'Show / hide panel',
+      rsvp:'RSVP focus mode',full:'Fullscreen',theme:'Toggle light/dark theme',
+      bm:'Bookmark current page',search:'Search text',zoom:'PDF Zoom',zoomreset:'Reset zoom',doc:'Next document'},
+    sleep_off:'Off',
+  },
+  'es-ES': { placeholder:'Selecciona un país…', hint_none:'Selecciona tu país para cargar las voces.',
+    hint_ok:(n,lbl)=>`${n} voz${n>1?'es':''} encontrada${n>1?'s':''} para ${lbl}.`,
+    hint_miss:(lbl)=>`No se encontraron voces para ${lbl}. Instala voces en la configuración del sistema.`,
+    audio:'⚙️ Ajustes de Audio', speed:'Velocidad', pitch:'Tono', volume:'Volumen',
+    stats:'📊 Estadísticas', words:'palabras', read:'leído', left:'restante',
+    page_btn:'Pág.', all_btn:'Todo', copy_btn:'Copiar',
+    notes:'📝 Notas', copy_notes:'Copiar notas', clear_notes:'Limpiar',
+    library:'📂 Biblioteca', lib_empty:'No hay documentos cargados',
+    bookmarks:'🔖 Favoritos', bm_empty:'Sin favoritos aún', bm_hint:'Pulsa M para marcar la página actual',
+    page:'Página', current_word:'palabra actual', open_pdf:'Abre un PDF para\nempezar a leer',
+    cfg_voice:'Voz & Narración', cfg_country:'Tu país / idioma', cfg_country_sub:'Filtra las voces del sistema',
+    cfg_voicesel:'Voz seleccionada', cfg_appearance:'Apariencia', cfg_theme:'Tema',
+    cfg_fontsize:'Tamaño de fuente', cfg_spacing:'Interlineado', cfg_hlcolor:'Color de resaltado',
+    cfg_readopts:'Opciones de lectura', cfg_hl:'Resaltar palabra (texto)', cfg_pdfhl:'Resaltar en PDF',
+    cfg_scroll:'Auto-scroll texto', cfg_cont:'Lectura continua', cfg_cont_sub:'Avanza de página al terminar',
+    cfg_punct:'Omitir puntuación', cfg_guided:'Lectura guiada (frases)', cfg_guided_sub:'Lee frase por frase',
+    cfg_sleep:'Temporizador de sueño', cfg_shortcuts:'Atajos de Teclado', cfg_about:'Acerca de',
+    cfg_about_text:'Lector PDF con Text-to-Speech, múltiples documentos, sesión persistente y modo foco RSVP.',
+    kd:{play:'Play / Pausar narración',page:'Página anterior / siguiente',stop:'Detener narración',
+      thumb:'Toggle miniaturas',kara:'Toggle Karaoke',side:'Mostrar / ocultar panel',
+      rsvp:'Modo foco RSVP',full:'Pantalla completa',theme:'Cambiar tema',
+      bm:'Marcar página',search:'Buscar en texto',zoom:'Zoom PDF',zoomreset:'Reset zoom',doc:'Siguiente documento'},
+    sleep_off:'Desactivado',
+  },
+  'fr-FR': { placeholder:'Sélectionnez votre pays…', hint_none:'Sélectionnez votre pays pour charger les voix.',
+    hint_ok:(n,lbl)=>`${n} voix trouvée${n>1?'s':''} pour ${lbl}.`,
+    hint_miss:(lbl)=>`Aucune voix trouvée pour ${lbl}. Installez des voix dans les paramètres système.`,
+    audio:'⚙️ Paramètres Audio', speed:'Vitesse', pitch:'Ton', volume:'Volume',
+    stats:'📊 Statistiques', words:'mots', read:'lu', left:'restant',
+    page_btn:'Page', all_btn:'Tout', copy_btn:'Copier',
+    notes:'📝 Notes', copy_notes:'Copier les notes', clear_notes:'Effacer',
+    library:'📂 Bibliothèque', lib_empty:'Aucun document chargé',
+    bookmarks:'🔖 Favoris', bm_empty:'Aucun favori pour l\'instant', bm_hint:'Appuyez sur M pour marquer la page',
+    page:'Page', current_word:'mot actuel', open_pdf:'Ouvrez un PDF pour\ncommencer la lecture',
+    cfg_voice:'Voix & Narration', cfg_country:'Votre pays / langue', cfg_country_sub:'Filtre les voix système disponibles',
+    cfg_voicesel:'Voix sélectionnée', cfg_appearance:'Apparence', cfg_theme:'Thème',
+    cfg_fontsize:'Taille de police', cfg_spacing:'Interligne', cfg_hlcolor:'Couleur de surbrillance',
+    cfg_readopts:'Options de lecture', cfg_hl:'Surligner le mot (texte)', cfg_pdfhl:'Surligner dans le PDF',
+    cfg_scroll:'Défilement auto', cfg_cont:'Lecture continue', cfg_cont_sub:'Avance la page quand terminé',
+    cfg_punct:'Ignorer ponctuation', cfg_guided:'Lecture guidée (phrases)', cfg_guided_sub:'Lit phrase par phrase',
+    cfg_sleep:'Minuterie', cfg_shortcuts:'Raccourcis Clavier', cfg_about:'À propos',
+    cfg_about_text:'Lecteur PDF avec Text-to-Speech, multi-documents, session persistante et mode focus RSVP.',
+    kd:{play:'Play / Pause narration',page:'Page préc. / suivante',stop:'Arrêter narration',
+      thumb:'Toggle vignettes',kara:'Toggle Karaoké',side:'Afficher / masquer panneau',
+      rsvp:'Mode focus RSVP',full:'Plein écran',theme:'Changer thème',
+      bm:'Marquer page',search:'Chercher dans le texte',zoom:'Zoom PDF',zoomreset:'Réinitialiser zoom',doc:'Document suivant'},
+    sleep_off:'Désactivé',
+  },
+  'de-DE': { placeholder:'Land auswählen…', hint_none:'Wählen Sie Ihr Land, um Stimmen zu laden.',
+    hint_ok:(n,lbl)=>`${n} Stimme${n>1?'n':''} gefunden für ${lbl}.`,
+    hint_miss:(lbl)=>`Keine Stimmen für ${lbl} gefunden. Installieren Sie Stimmen in den Systemeinstellungen.`,
+    audio:'⚙️ Audioeinstellungen', speed:'Geschwindigkeit', pitch:'Tonhöhe', volume:'Lautstärke',
+    stats:'📊 Statistiken', words:'Wörter', read:'gelesen', left:'verbleibend',
+    page_btn:'S.', all_btn:'Alles', copy_btn:'Kopieren',
+    notes:'📝 Notizen', copy_notes:'Notizen kopieren', clear_notes:'Löschen',
+    library:'📂 Bibliothek', lib_empty:'Keine Dokumente geladen',
+    bookmarks:'🔖 Lesezeichen', bm_empty:'Noch keine Lesezeichen', bm_hint:'Drücken Sie M um die aktuelle Seite zu markieren',
+    page:'Seite', current_word:'aktuelles Wort', open_pdf:'PDF öffnen um\nzu beginnen',
+    cfg_voice:'Stimme & Narration', cfg_country:'Ihr Land / Sprache', cfg_country_sub:'Filtert verfügbare Systemstimmen',
+    cfg_voicesel:'Ausgewählte Stimme', cfg_appearance:'Erscheinungsbild', cfg_theme:'Thema',
+    cfg_fontsize:'Schriftgröße', cfg_spacing:'Zeilenabstand', cfg_hlcolor:'Hervorhebungsfarbe',
+    cfg_readopts:'Leseoptionen', cfg_hl:'Wort hervorheben (Text)', cfg_pdfhl:'Im PDF hervorheben',
+    cfg_scroll:'Autoscroll Text', cfg_cont:'Kontinuierliches Lesen', cfg_cont_sub:'Geht zur nächsten Seite',
+    cfg_punct:'Satzzeichen überspringen', cfg_guided:'Geführtes Lesen (Sätze)', cfg_guided_sub:'Liest satzweise',
+    cfg_sleep:'Schlaf-Timer', cfg_shortcuts:'Tastenkürzel', cfg_about:'Über',
+    cfg_about_text:'PDF-Leseprogramm mit Text-to-Speech, Multi-Dokument, persistenter Sitzung und RSVP-Fokusmodus.',
+    kd:{play:'Play / Pause Narration',page:'Vorherige / nächste Seite',stop:'Narration stoppen',
+      thumb:'Seitenvorschau umschalten',kara:'Karaoke umschalten',side:'Panel ein/ausblenden',
+      rsvp:'RSVP-Fokusmodus',full:'Vollbild',theme:'Theme wechseln',
+      bm:'Seite markieren',search:'Im Text suchen',zoom:'PDF Zoom',zoomreset:'Zoom zurücksetzen',doc:'Nächstes Dokument'},
+    sleep_off:'Aus',
+  },
+  'it-IT': { placeholder:'Seleziona il tuo paese…', hint_none:'Seleziona il tuo paese per caricare le voci.',
+    hint_ok:(n,lbl)=>`${n} voce${n>1?'i':''} trovata${n>1?'e':''} per ${lbl}.`,
+    hint_miss:(lbl)=>`Nessuna voce trovata per ${lbl}. Installa voci nelle impostazioni di sistema.`,
+    audio:'⚙️ Impostazioni Audio', speed:'Velocità', pitch:'Tono', volume:'Volume',
+    stats:'📊 Statistiche', words:'parole', read:'letto', left:'rimanente',
+    page_btn:'Pag.', all_btn:'Tutto', copy_btn:'Copia',
+    notes:'📝 Note', copy_notes:'Copia note', clear_notes:'Cancella',
+    library:'📂 Biblioteca', lib_empty:'Nessun documento caricato',
+    bookmarks:'🔖 Segnalibri', bm_empty:'Nessun segnalibro ancora', bm_hint:'Premi M per aggiungere un segnalibro',
+    page:'Pagina', current_word:'parola corrente', open_pdf:'Apri un PDF per\niniciar la lettura',
+    cfg_voice:'Voce & Narrazione', cfg_country:'Paese / lingua', cfg_country_sub:'Filtra le voci di sistema',
+    cfg_voicesel:'Voce selezionata', cfg_appearance:'Aspetto', cfg_theme:'Tema',
+    cfg_fontsize:'Dimensione font', cfg_spacing:'Interlinea', cfg_hlcolor:'Colore evidenziazione',
+    cfg_readopts:'Opzioni di lettura', cfg_hl:'Evidenziare parola (testo)', cfg_pdfhl:'Evidenziare nel PDF',
+    cfg_scroll:'Auto-scroll', cfg_cont:'Lettura continua', cfg_cont_sub:'Avanza alla pagina successiva',
+    cfg_punct:'Salta punteggiatura', cfg_guided:'Lettura guidata (frasi)', cfg_guided_sub:'Legge frase per frase',
+    cfg_sleep:'Timer sonno', cfg_shortcuts:'Scorciatoie Tastiera', cfg_about:'Informazioni',
+    cfg_about_text:'Lettore PDF con Text-to-Speech, multi-documento, sessione persistente e modalità focus RSVP.',
+    kd:{play:'Play / Pausa narrazione',page:'Pagina prec. / succ.',stop:'Ferma narrazione',
+      thumb:'Toggle miniature',kara:'Toggle Karaoke',side:'Mostra / nascondi pannello',
+      rsvp:'Modalità focus RSVP',full:'Schermo intero',theme:'Cambia tema',
+      bm:'Aggiungi segnalibro',search:'Cerca nel testo',zoom:'Zoom PDF',zoomreset:'Ripristina zoom',doc:'Documento successivo'},
+    sleep_off:'Disattivato',
+  },
+};
+
+// Fallback to pt-BR for unlisted languages
+function getT(lang) {
+  return I18N[lang] || I18N['pt-BR'];
+}
+
+function applyI18n(lang) {
+  const t = getT(lang);
+  // update html lang attribute
+  document.documentElement.lang = lang.split('-')[0];
+  const s = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
+  s('lbl-audio',       t.audio);
+  s('lbl-speed',       t.speed);
+  s('lbl-pitch',       t.pitch);
+  s('lbl-volume',      t.volume);
+  s('lbl-stats',       t.stats);
+  s('lbl-stat-words',  t.words);
+  s('lbl-stat-read',   t.read);
+  s('lbl-stat-left',   t.left);
+  s('lbl-btn-page',    t.page_btn);
+  s('lbl-btn-all',     t.all_btn);
+  s('lbl-btn-copy',    t.copy_btn);
+  s('lbl-notes',       t.notes);
+  s('btn-copy-notes',  t.copy_notes);
+  s('btn-clear-notes', t.clear_notes);
+  s('lbl-library',     t.library + ' ');  // space before badge
+  s('lbl-lib-empty',   t.lib_empty);
+  s('lbl-bookmarks',   t.bookmarks);
+  s('lbl-bm-empty',    t.bm_empty);
+  s('lbl-bm-hint',     '');  // rebuild with kbd below
+  s('lbl-page',        t.page);
+  s('lbl-current-word',t.current_word);
+  s('lbl-open-pdf',    t.open_pdf);
+  // notes textarea placeholder
+  const ta = document.getElementById('notesArea');
+  if (ta) ta.placeholder = t.notes.replace('📝 ','') + '…';
+  // cfg labels
+  s('cfg-lbl-voice',      t.cfg_voice);
+  s('cfg-lbl-country',    t.cfg_country);
+  s('cfg-sub-country',    t.cfg_country_sub);
+  s('cfg-lbl-voicesel',   t.cfg_voicesel);
+  s('cfg-lbl-appearance', t.cfg_appearance);
+  s('cfg-lbl-theme',      t.cfg_theme);
+  s('cfg-lbl-fontsize',   t.cfg_fontsize);
+  s('cfg-lbl-spacing',    t.cfg_spacing);
+  s('cfg-lbl-hlcolor',    t.cfg_hlcolor);
+  s('cfg-lbl-readopts',   t.cfg_readopts);
+  s('cfg-lbl-hl',         t.cfg_hl);
+  s('cfg-lbl-pdfhl',      t.cfg_pdfhl);
+  s('cfg-lbl-scroll',     t.cfg_scroll);
+  s('cfg-lbl-cont',       t.cfg_cont);
+  s('cfg-sub-cont',       t.cfg_cont_sub);
+  s('cfg-lbl-punct',      t.cfg_punct);
+  s('cfg-lbl-guided',     t.cfg_guided);
+  s('cfg-sub-guided',     t.cfg_guided_sub);
+  s('cfg-lbl-sleep',      t.cfg_sleep);
+  s('cfg-lbl-shortcuts',  t.cfg_shortcuts);
+  s('cfg-lbl-about',      t.cfg_about);
+  s('cfg-about-text',     t.cfg_about_text);
+  s('opt-sleep-off',      t.sleep_off);
+  // shortcut descriptions
+  const kd = t.kd;
+  s('kd-play',   kd.play);   s('kd-page',  kd.page);  s('kd-stop', kd.stop);
+  s('kd-thumb',  kd.thumb);  s('kd-kara',  kd.kara);  s('kd-side', kd.side);
+  s('kd-rsvp',   kd.rsvp);   s('kd-full',  kd.full);  s('kd-theme',kd.theme);
+  s('kd-bm',     kd.bm);     s('kd-search',kd.search);s('kd-zoom', kd.zoom);
+  s('kd-zoomreset',kd.zoomreset); s('kd-doc', kd.doc);
+  // rebuild lib-count badge (gets wiped above)
+  const lc = document.getElementById('libCount');
+  if (lc) { const el = document.getElementById('lbl-library'); if (el) { el.textContent = t.library + ' '; el.appendChild(lc); } }
+  // voice hint default
+  const vh = document.getElementById('voiceHintEl');
+  if (vh) vh.textContent = t.hint_none;
+  // voice placeholder
+  const vp = document.getElementById('opt-voice-placeholder');
+  if (vp) vp.textContent = t.placeholder;
+}
+
+function onCountryChange() {
+  const sel = document.getElementById('countryPicker');
+  selectedCountry = sel.value;
+  if (!selectedCountry) return;
+  loadVoicesForCountry(selectedCountry);
+  applyI18n(selectedCountry);
+  savePrefs();
+}
+
+function loadVoicesForCountry(lang) {
+  voices = speechSynthesis.getVoices();
+  const vsEl  = document.getElementById('voiceSelect');
+  const hint  = document.getElementById('voiceHintEl');
+  const t     = getT(lang);
+  const label = document.querySelector(`#countryPicker option[value="${lang}"]`)?.textContent || lang;
+
+  let filtered;
+  if (lang === 'all') {
+    filtered = voices;
+  } else {
+    const prefix = lang.split('-')[0].toLowerCase();
+    filtered = voices.filter(v => v.lang.toLowerCase().startsWith(prefix));
+  }
+
+  vsEl.innerHTML = '';
+  if (!filtered.length) {
+    const o = document.createElement('option'); o.value = ''; o.textContent = t.placeholder;
+    vsEl.appendChild(o);
+    if (hint) hint.textContent = t.hint_miss(label);
+    syncMobileVoice(); return;
+  }
+
+  // Group by sub-locale
+  const byLocale = {};
+  filtered.forEach(v => { if (!byLocale[v.lang]) byLocale[v.lang] = []; byLocale[v.lang].push(v); });
+  Object.entries(byLocale).forEach(([loc, list]) => {
+    const g = document.createElement('optgroup'); g.label = loc;
+    list.forEach(v => {
+      const o = document.createElement('option'); o.value = v.name; o.textContent = v.name; g.appendChild(o);
+    });
+    vsEl.appendChild(g);
+  });
+  if (hint) hint.textContent = t.hint_ok(filtered.length, label);
+  syncMobileVoice();
+}
+
+// ── VOICES ──────────────────────────────────────────────────────
+function loadVoices() {
+  voices = speechSynthesis.getVoices();
+  if (!voices.length) return;
+  if (selectedCountry) loadVoicesForCountry(selectedCountry);
+}
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+function applyVoiceToUtterance(utt) {
+  const sv = document.getElementById('voiceSelect').value;
+  const v  = voices.find(v => v.name === sv);
+  if (v) utt.voice = v;
+  utt.rate   = parseFloat(document.getElementById('speedSlider').value);
+  utt.pitch  = parseFloat(document.getElementById('pitchSlider').value);
+  utt.volume = parseFloat(document.getElementById('volumeSlider').value);
+}
+
+// ── FILE LOADING ────────────────────────────────────────────────
+function handleFiles(fileList) {
+  if (!fileList?.length) return;
+  const files = Array.from(fileList);
+  const pdfs  = files.filter(f => f.type === 'application/pdf');
+  const bad   = files.length - pdfs.length;
+  if (bad) showToast(`${bad} arquivo(s) ignorado(s) — não são PDF`,'error');
+  if (!pdfs.length) return;
+  pdfs.reduce((ch, f) => ch.then(() => loadPDF(f)), Promise.resolve());
+}
+
+function loadPDF(file) {
+  return new Promise(resolve => {
+    showLoading(`Carregando "${file.name}"…`);
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        const buf = e.target.result;
+        const pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+        const totalPages = pdfDoc.numPages;
+        updateLoading(`Extraindo texto — ${file.name}…`);
+        const allPagesText = [];
+        for (let i = 1; i <= totalPages; i++) {
+          const pg = await pdfDoc.getPage(i);
+          const tc = await pg.getTextContent();
+          allPagesText[i] = tc.items.map(it => it.str).join(' ').replace(/\s+/g,' ').trim();
+        }
+        const id  = ++docIdCounter;
+        const doc = { id, name:file.name, pdfDoc, totalPages, currentPage:1, allPagesText, buffer:buf };
+        docs.push(doc);
+        try { await dbSaveDoc(doc, buf); } catch(_) {}
+        hideLoading();
+        renderTabs(); renderLibrary();
+        await switchDoc(id);
+        savePrefs();
+        showToast(`"${file.name}" — ${totalPages} pág.`,'success');
+      } catch(err) {
+        hideLoading();
+        showToast(`Erro: ${err.message}`,'error');
+      }
+      resolve();
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ── DOC MANAGEMENT ──────────────────────────────────────────────
+async function switchDoc(id) {
+  const doc = docs.find(d => d.id === id); if (!doc) return;
+  if (isPlaying) stopReading();
+  activeDocId = id; wordIndex = 0;
+  renderTabs(); renderLibrary();
+  const ua = document.getElementById('uploadArea');
+  if (ua) ua.style.display = 'none';
+  updatePageUI();
+  await renderCurrentPage();
+  updateTextPanel();
+  loadNotes();
+  renderBookmarks();
+  thumbsBuilt = false;
+  if (thumbsOpen) await buildThumbs();
+  savePrefs();
+}
+
+function removeDoc(id, e) {
+  if (e) e.stopPropagation();
+  const idx = docs.findIndex(d => d.id === id); if (idx===-1) return;
+  if (activeDocId === id) stopReading();
+  docs.splice(idx, 1);
+  try { dbRemoveDoc(id); } catch(_) {}
+  if (!docs.length) { activeDocId = null; resetViewer(); }
+  else if (activeDocId === id) switchDoc(docs[Math.max(0,idx-1)].id);
+  else { renderTabs(); renderLibrary(); }
+  savePrefs();
+}
+
+function resetViewer() {
+  activeDocId = null; words = []; wordIndex = 0;
+  document.getElementById('textEmpty').innerHTML = `
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    </svg><p>Abra um PDF para<br>começar a leitura</p>`;
+  document.getElementById('textEmpty').style.display = 'flex';
+  document.getElementById('textContent').style.display = 'none';
+  document.getElementById('pageTotalEl').textContent = '/ 0';
+  document.getElementById('pageInput').value = 1;
+  document.getElementById('prevBtn').disabled = true;
+  document.getElementById('nextBtn').disabled = true;
+  document.getElementById('canvasContainer').innerHTML = `
+    <div class="upload-area" id="uploadArea"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="this.classList.remove('drag-over');handleFiles(event.dataTransfer.files)"
+      onclick="document.getElementById('fileInputMulti').click()">
+      <div class="upload-circle">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/><path d="M12 12v6"/><path d="M9 15l3-3 3 3"/>
+        </svg>
+      </div>
+      <div class="upload-text"><h3>Abra seus PDFs</h3><p>Arraste e solte ou procure arquivos</p><div class="or">ou</div></div>
+      <button class="btn-browse" onclick="event.stopPropagation();document.getElementById('fileInputMulti').click()">Procurar arquivos</button>
+      <p class="supported-fmts">Múltiplos PDFs · persistência automática</p>
+    </div>`;
+  renderTabs(); renderLibrary(); savePrefs();
+}
+
+// ── TABS ────────────────────────────────────────────────────────
+function renderTabs() {
+  const bar = document.getElementById('tabsBar');
+  const empty = document.getElementById('tabsEmpty');
+  bar.querySelectorAll('.doc-tab').forEach(t => t.remove());
+  if (!docs.length) { empty.style.display = 'flex'; return; }
+  empty.style.display = 'none';
+  const addBtn = bar.querySelector('.tab-add-btn');
+  docs.forEach(doc => {
+    const tab = document.createElement('div');
+    tab.className = 'doc-tab'+(doc.id===activeDocId?' active':'');
+    tab.title = doc.name;
+    tab.innerHTML = `
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:.5">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <span class="tab-name">${esc(doc.name)}</span>
+      <span class="tab-close" onclick="removeDoc(${doc.id},event)">×</span>`;
+    tab.addEventListener('click', () => switchDoc(doc.id));
+    bar.insertBefore(tab, addBtn);
+  });
+  const at = bar.querySelector('.doc-tab.active');
+  if (at) at.scrollIntoView({ inline:'nearest', behavior:'smooth' });
+}
+
+// ── LIBRARY ─────────────────────────────────────────────────────
+function toggleLibrary() {
+  libraryOpen = !libraryOpen;
+  document.getElementById('libraryPanel').classList.toggle('open', libraryOpen);
+  document.getElementById('libToggleBtn').classList.toggle('on', libraryOpen);
+  savePrefs();
+}
+function renderLibrary() {
+  document.getElementById('libCount').textContent = docs.length;
+  const list = document.getElementById('libList');
+  if (!docs.length) { list.innerHTML = '<div class="lib-empty">Nenhum documento carregado</div>'; return; }
+  list.innerHTML = docs.map(doc => `
+    <div class="lib-item${doc.id===activeDocId?' active-doc':''}" onclick="switchDoc(${doc.id})">
+      <div class="lib-icon">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        </svg>
+      </div>
+      <div class="lib-info">
+        <div class="lib-name">${esc(doc.name)}</div>
+        <div class="lib-meta">${doc.totalPages} pág. · p.${doc.currentPage}</div>
+      </div>
+      <div class="lib-remove" onclick="removeDoc(${doc.id},event)">×</div>
+    </div>`).join('');
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── RENDER ──────────────────────────────────────────────────────
+async function renderCurrentPage() {
+  const doc = activeDoc(); if (!doc || viewMode==='text') return;
+  const cc = document.getElementById('canvasContainer');
+  if (viewMode === 'single') {
+    cc.innerHTML = '';
+    await renderPage(doc, doc.currentPage, cc);
+  } else {
+    cc.innerHTML = '';
+    showLoading('Renderizando todas as páginas…');
+    for (let i = 1; i <= doc.totalPages; i++) {
+      updateLoading(`Renderizando ${i}/${doc.totalPages}…`);
+      await renderPage(doc, i, cc, true);
+    }
+    hideLoading();
+  }
+  updateThumbActive();
+}
+
+async function renderPage(doc, pageNum, container, showLabel=false) {
+  const page = await doc.pdfDoc.getPage(pageNum);
+  const vp   = page.getViewport({ scale: zoom });
+  const wrap = document.createElement('div');
+  wrap.className = 'page-wrapper';
+  wrap.dataset.docId   = doc.id;
+  wrap.dataset.pageNum = pageNum;
+  wrap.style.width  = vp.width  + 'px';
+  wrap.style.height = vp.height + 'px';
+
+  const canvas  = document.createElement('canvas');
+  canvas.width  = vp.width;
+  canvas.height = vp.height;
+  wrap.appendChild(canvas);
+
+  const tld = document.createElement('div');
+  tld.className = 'textLayer';
+  tld.style.width  = vp.width  + 'px';
+  tld.style.height = vp.height + 'px';
+  wrap.appendChild(tld);
+
+  if (showLabel) {
+    const lbl = document.createElement('div');
+    lbl.className = 'page-label';
+    lbl.textContent = `Página ${pageNum}`;
+    wrap.appendChild(lbl);
+  }
+  container.appendChild(wrap);
+
+  // context menu on right-click / long-press on text
+  wrap.addEventListener('contextmenu', e => { e.preventDefault(); showCtxMenu(e, -1); });
+
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+
+  const tc = await page.getTextContent();
+  pdfTextCache[`${doc.id}_${pageNum}`] = tc.items;
+
+  tc.items.forEach(item => {
+    if (!item.str) return;
+    const tx       = pdfjsLib.Util.transform(vp.transform, item.transform);
+    const angle    = Math.atan2(tx[1], tx[0]);
+    const fontSize = Math.sqrt(tx[2]*tx[2]+tx[3]*tx[3]);
+    const span     = document.createElement('span');
+    span.textContent = item.str;
+    span.style.left      = tx[4]+'px';
+    span.style.top       = (tx[5]-fontSize)+'px';
+    span.style.fontSize  = fontSize+'px';
+    span.style.fontFamily = item.fontName || 'sans-serif';
+    const scaleX = item.width > 0
+      ? (item.width*zoom)/(fontSize*item.str.length*0.6) : 1;
+    span.style.transform = `scaleX(${scaleX}) rotate(${angle}rad)`;
+    tld.appendChild(span);
+  });
+}
+
+// ── PDF HIGHLIGHT ────────────────────────────────────────────────
+function clearPdfHighlight() {
+  document.querySelectorAll('.textLayer span.pdf-hl').forEach(s => s.classList.remove('pdf-hl'));
+}
+function highlightWordInPdf(gIdx) {
+  if (!opts.pdfHighlight || viewMode==='text') return;
+  clearPdfHighlight();
+  const doc = activeDoc(); if (!doc) return;
+  const wrappers = document.querySelectorAll('.page-wrapper');
+  if (!wrappers.length) return;
+  let offset = 0, found = false;
+  wrappers.forEach(wrap => {
+    if (found) return;
+    const pNum = parseInt(wrap.dataset.pageNum);
+    const dId  = parseInt(wrap.dataset.docId);
+    if (dId !== doc.id) return;
+    const pw = (doc.allPagesText[pNum]||'').split(/\s+/).filter(Boolean);
+    if (viewMode==='single') { highlightSpanAt(wrap, gIdx); found=true; }
+    else {
+      if (gIdx >= offset && gIdx < offset+pw.length) {
+        highlightSpanAt(wrap, gIdx-offset); found=true;
+      }
+      offset += pw.length;
+    }
+  });
+}
+function highlightSpanAt(pageWrapper, localIdx) {
+  const tld = pageWrapper.querySelector('.textLayer'); if (!tld) return;
+  const spans = Array.from(tld.querySelectorAll('span'));
+  let wi = 0;
+  for (const sp of spans) {
+    const sw = sp.textContent.split(/\s+/).filter(Boolean);
+    if (localIdx < wi+sw.length) {
+      sp.classList.add('pdf-hl');
+      sp.scrollIntoView({ block:'nearest', behavior:'smooth' });
+      return;
+    }
+    wi += sw.length;
+  }
+}
+
+// ── TEXT PANEL ──────────────────────────────────────────────────
+function updateTextPanel() {
+  const doc   = activeDoc();
+  const el    = document.getElementById('textContent');
+  const empty = document.getElementById('textEmpty');
+  if (!doc) { el.style.display='none'; empty.style.display='flex'; words=[]; return; }
+  const txt = doc.allPagesText[doc.currentPage] || '';
+  if (!txt.trim()) {
+    el.style.display = 'none';
+    empty.innerHTML = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>Página ${doc.currentPage} sem texto extraível</p>`;
+    empty.style.display = 'flex'; words = []; return;
+  }
+  empty.style.display = 'none';
+  el.style.display    = 'block';
+  el.style.fontSize   = fontSize + 'px';
+  el.style.lineHeight = lineSpacing;
+  let raw = txt.split(/\s+/).filter(w => w.length>0);
+  if (opts.skipPunct) raw = raw.map(w => w.replace(/^[^\w]+|[^\w]+$/g,'')).filter(Boolean);
+  words = raw;
+  el.innerHTML = words.map((w,i) =>
+    `<span class="word" id="w${i}" onclick="readFromWord(${i})" ondblclick="lookupWord(words[${i}],this)" oncontextmenu="wordCtx(event,${i})">${esc(w)} </span>`
+  ).join('');
+  wordIndex = 0;
+  updateProgress();
+  document.getElementById('statWords').textContent = words.length;
+  document.getElementById('statPct').textContent   = '0%';
+  clearSearchHighlights();
+  searchResults = [];
+  document.getElementById('searchCount').textContent = '0 / 0';
+  if (searchOpen) setTimeout(doSearch, 50);
+}
+
+// ── PAGE NAV ────────────────────────────────────────────────────
+function updatePageUI() {
+  const doc = activeDoc(); if (!doc) return;
+  document.getElementById('pageInput').value         = doc.currentPage;
+  document.getElementById('pageInput').max           = doc.totalPages;
+  document.getElementById('pageTotalEl').textContent = `/ ${doc.totalPages}`;
+  document.getElementById('prevBtn').disabled        = doc.currentPage <= 1;
+  document.getElementById('nextBtn').disabled        = doc.currentPage >= doc.totalPages;
+  // sync mobile
+  const pm = document.getElementById('pageInputMob');
+  const pt = document.getElementById('pageTotalMob');
+  if (pm) pm.value = doc.currentPage;
+  if (pt) pt.textContent = `/ ${doc.totalPages}`;
+}
+
+async function changePage(delta, autoPlay=false) {
+  const doc = activeDoc(); if (!doc) return;
+  const np = doc.currentPage + delta;
+  if (np<1 || np>doc.totalPages) return;
+  if (isPlaying) speechSynthesis.cancel();
+  isPlaying = false; wordIndex = 0;
+  doc.currentPage = np;
+  updatePageUI();
+  await renderCurrentPage();
+  updateTextPanel();
+  if (autoPlay && opts.continue) setTimeout(startSpeaking, 300);
+  try { await dbUpdateMeta(doc); } catch(_) {}
+  savePrefs();
+}
+
+async function goToPage(val) {
+  const doc = activeDoc(); if (!doc) return;
+  const n = parseInt(val);
+  if (isNaN(n) || n<1 || n>doc.totalPages) {
+    document.getElementById('pageInput').value = doc.currentPage; return;
+  }
+  stopReading();
+  doc.currentPage = n;
+  updatePageUI();
+  await renderCurrentPage();
+  updateTextPanel();
+  try { await dbUpdateMeta(doc); } catch(_) {}
+  savePrefs();
+}
+
+// ── TTS ─────────────────────────────────────────────────────────
+function togglePlay() {
+  if (!activeDoc()) return showToast('Abra um PDF primeiro.','error');
+  if (!words.length) return showToast('Nenhum texto nesta página.','error');
+  isPlaying ? pauseReading() : startSpeaking();
+}
+
+function startSpeaking() {
+  speechSynthesis.cancel();
+  if (wordIndex >= words.length) wordIndex = 0;
+  const text = words.slice(wordIndex).join(' ');
+  utterance = new SpeechSynthesisUtterance(text);
+  applyVoiceToUtterance(utterance);
+  karaokeOffset = wordIndex;
+  buildKaraokeWindow(wordIndex);
+  utterance.onstart = () => { isPlaying = true; setPlayIcon(true); showBadge('Lendo'); };
+  const bw = text.split(/\s+/).filter(Boolean);
+  let ci = 0;
+  const wcp = bw.map(w => { const p = ci; ci += w.length+1; return p; });
+  utterance.onboundary = e => {
+    if (e.name !== 'word') return;
+    let cl = 0;
+    for (let i=0; i<wcp.length; i++) { if (wcp[i]<=e.charIndex) cl=i; else break; }
+    const abs = wordIndex + cl;
+    document.getElementById('currentWordEl').textContent = bw[cl] || '—';
+    if (opts.highlight)    { clearHighlight(); highlightWord(abs); }
+    if (opts.pdfHighlight) { highlightWordInPdf(abs); }
+    updateProgressTo(abs);
+    if (opts.autoScroll) {
+      const el = document.getElementById(`w${abs}`);
+      if (el) el.scrollIntoView({ block:'nearest', behavior:'smooth' });
+    }
+    updateKaraoke(abs); updateStats(abs);
+  };
+  utterance.onend = () => {
+    isPlaying = false; setPlayIcon(false); clearHighlight(); clearPdfHighlight();
+    document.getElementById('currentWordEl').textContent = '—';
+    document.getElementById('statusText').textContent = 'Concluído';
+    const doc = activeDoc();
+    if (opts.continue && doc && doc.currentPage < doc.totalPages) changePage(1, true);
+    else { hideBadge(); wordIndex = 0; updateProgress(); resetStats(); }
+  };
+  utterance.onerror = e => {
+    if (e.error==='interrupted'||e.error==='canceled') return;
+    isPlaying = false; setPlayIcon(false); hideBadge();
+    showToast('Erro TTS: '+e.error,'error');
+  };
+  speechSynthesis.speak(utterance);
+  const doc = activeDoc();
+  document.getElementById('statusText').textContent = doc ? `Página ${doc.currentPage}` : 'Lendo';
+}
+
+function pauseReading() {
+  speechSynthesis.cancel();
+  isPlaying = false; setPlayIcon(false); hideBadge();
+  document.getElementById('statusText').textContent = 'Pausado';
+}
+function stopReading() {
+  speechSynthesis.cancel();
+  isPlaying = false; wordIndex = 0; setPlayIcon(false); hideBadge();
+  clearHighlight(); clearPdfHighlight();
+  document.getElementById('currentWordEl').textContent = '—';
+  document.getElementById('statusText').textContent = 'Parado';
+  document.getElementById('progressFill').style.width = '0%';
+  resetStats();
+}
+function skipWords(n) {
+  wordIndex = Math.max(0, Math.min(words.length-1, wordIndex+n));
+  if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); }
+  else { clearHighlight(); highlightWord(wordIndex); updateProgress(); }
+}
+function readFromWord(idx) {
+  wordIndex = idx;
+  if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); }
+  else { clearHighlight(); highlightWord(idx); }
+}
+
+// ── HIGHLIGHT ───────────────────────────────────────────────────
+function clearHighlight() { document.querySelectorAll('.word.hl').forEach(e => e.classList.remove('hl')); }
+function highlightWord(i) { const e = document.getElementById(`w${i}`); if (e) e.classList.add('hl'); }
+
+// ── PROGRESS ────────────────────────────────────────────────────
+function updateProgress()    { document.getElementById('progressFill').style.width=(!words.length?0:wordIndex/words.length*100)+'%'; }
+function updateProgressTo(i) { if (words.length) document.getElementById('progressFill').style.width=(i/words.length*100)+'%'; }
+function seekProgress(e) {
+  if (!words.length) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  const ratio = Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+  wordIndex = Math.floor(ratio*words.length);
+  if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); }
+  else { clearHighlight(); highlightWord(wordIndex); updateProgress(); }
+}
+
+// ── ZOOM ────────────────────────────────────────────────────────
+async function adjustZoom(d) { zoom=Math.max(.3,Math.min(4,zoom+d)); syncZoomDisplay(); await renderCurrentPage(); savePrefs(); }
+async function resetZoom()   { zoom=1; syncZoomDisplay(); await renderCurrentPage(); savePrefs(); }
+
+// ── VIEW MODE ───────────────────────────────────────────────────
+async function setViewMode(m) {
+  viewMode = m;
+  ['Single','All','Text'].forEach(x =>
+    document.getElementById(`btnView${x}`).classList.toggle('active', m===x.toLowerCase()));
+  const cc = document.getElementById('canvasContainer');
+  if (m === 'text') {
+    cc.innerHTML = '';
+    const doc = activeDoc();
+    if (!doc) { cc.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:14px">Abra um PDF primeiro</div>'; return; }
+    const full = doc.allPagesText.slice(1).join('\n\n─── Página ───\n\n');
+    const div = document.createElement('div');
+    div.style.cssText = `max-width:740px;width:100%;padding:28px;font-size:${fontSize}px;line-height:${lineSpacing};color:#d8d3c8;white-space:pre-wrap`;
+    div.textContent = full || 'Nenhum texto extraível.';
+    cc.appendChild(div);
+  } else if (activeDoc()) await renderCurrentPage();
+  savePrefs();
+}
+
+// ── SLIDERS ─────────────────────────────────────────────────────
+function updateSlider(t, v) {
+  const n = parseFloat(v);
+  if (t==='speed')  document.getElementById('speedVal').textContent  = n.toFixed(2)+'×';
+  if (t==='pitch')  document.getElementById('pitchVal').textContent  = n.toFixed(2);
+  if (t==='volume') document.getElementById('volumeVal').textContent = Math.round(n*100)+'%';
+  syncMobileSliders();
+  if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); }
+  savePrefs();
+}
+function toggleOpt(k) { opts[k]=!opts[k]; refreshToggles(); savePrefs(); }
+function onVoiceChange() { syncMobileVoice(); updateLoquendoBadge(); if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); } savePrefs(); }
+
+// ── UI HELPERS ──────────────────────────────────────────────────
+function setPlayIcon(p) {
+  const pause = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+  const play  = '<polygon points="5 3 19 12 5 21 5 3"/>';
+  document.getElementById('playBtn').classList.toggle('playing', p);
+  document.getElementById('playIcon').innerHTML = p ? pause : play;
+  const mb = document.getElementById('mbPlayBtn');
+  if (mb) { mb.classList.toggle('playing', p); document.getElementById('mbPlayIcon').innerHTML = p ? pause : play; }
+}
+function showBadge(t) { const b=document.getElementById('modeBadge'); b.style.display='inline-flex'; document.getElementById('modeText').textContent=t; }
+function hideBadge()  { document.getElementById('modeBadge').style.display='none'; }
+function showLoading(m)   { document.getElementById('loadingOverlay').classList.remove('hidden'); document.getElementById('loadingText').textContent=m; }
+function updateLoading(m) { document.getElementById('loadingText').textContent=m; }
+function hideLoading()    { document.getElementById('loadingOverlay').classList.add('hidden'); }
+let toastT;
+function showToast(m, t='') {
+  const el = document.getElementById('toast');
+  el.textContent = m;
+  el.className = 'toast show'+(t?' '+t:'');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 3800);
+}
+
+// ── KARAOKE ─────────────────────────────────────────────────────
+const KW = 20;
+function toggleKaraoke() {
+  karaokeVisible = !karaokeVisible;
+  document.getElementById('karaokePanel').classList.toggle('visible', karaokeVisible);
+  document.getElementById('karaokeToggleBtn').classList.toggle('active', karaokeVisible);
+  if (karaokeVisible && words.length) buildKaraokeWindow(wordIndex);
+  savePrefs();
+}
+function buildKaraokeWindow(idx) {
+  const c = document.getElementById('karaokeWords');
+  if (!karaokeVisible || !words.length) return;
+  const half  = Math.floor(KW/2);
+  const start = Math.max(0, idx-half);
+  const end   = Math.min(words.length-1, start+KW-1);
+  c.innerHTML = ''; karaokeWords = [];
+  words.slice(start,end+1).forEach((w,i) => {
+    const gi = start+i;
+    const sp = document.createElement('span');
+    sp.className = 'kw'; sp.textContent = w;
+    if (gi < idx)  sp.classList.add('done');
+    if (gi === idx) sp.classList.add('active');
+    c.appendChild(sp);
+    karaokeWords.push({ el:sp, idx:gi });
+  });
+  karaokeOffset = start;
+}
+function updateKaraoke(idx) {
+  if (!karaokeVisible) return;
+  if (!karaokeWords.some(k=>k.idx===idx)) { buildKaraokeWindow(idx); return; }
+  karaokeWords.forEach(k => {
+    k.el.classList.remove('active','done');
+    if (k.idx < idx)  k.el.classList.add('done');
+    if (k.idx === idx) k.el.classList.add('active');
+  });
+}
+
+// ── SEARCH ──────────────────────────────────────────────────────
+function toggleSearch() {
+  searchOpen = !searchOpen;
+  const bar = document.getElementById('searchBar');
+  const btn = document.getElementById('btnSearch');
+  bar.classList.toggle('open', searchOpen);
+  btn.classList.toggle('active', searchOpen);
+  if (searchOpen) { document.getElementById('searchInput').focus(); document.getElementById('searchInput').select(); }
+  else { clearSearchHighlights(); searchResults = []; document.getElementById('searchCount').textContent='0 / 0'; }
+}
+function doSearch() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  clearSearchHighlights(); searchResults = [];
+  if (!q || !words.length) { document.getElementById('searchCount').textContent='0 / 0'; return; }
+  words.forEach((w,i) => {
+    if (w.toLowerCase().includes(q)) {
+      searchResults.push(i);
+      const el = document.getElementById(`w${i}`);
+      if (el) el.classList.add('search-hl');
+    }
+  });
+  searchIdx = 0;
+  document.getElementById('searchCount').textContent = `${searchResults.length?1:0} / ${searchResults.length}`;
+  if (searchResults.length) activateSearchResult(0);
+}
+function activateSearchResult(n) {
+  document.querySelectorAll('.word.search-active').forEach(e=>e.classList.remove('search-active'));
+  if (!searchResults.length) return;
+  searchIdx = ((n%searchResults.length)+searchResults.length)%searchResults.length;
+  const el = document.getElementById(`w${searchResults[searchIdx]}`);
+  if (el) { el.classList.add('search-active'); el.scrollIntoView({ block:'center', behavior:'smooth' }); }
+  document.getElementById('searchCount').textContent = `${searchIdx+1} / ${searchResults.length}`;
+}
+function searchNav(dir) { activateSearchResult(searchIdx+dir); }
+function onSearchKey(e) { if (e.key==='Enter') searchNav(e.shiftKey?-1:1); if (e.key==='Escape') toggleSearch(); }
+function clearSearchHighlights() { document.querySelectorAll('.word.search-hl').forEach(e=>e.classList.remove('search-hl','search-active')); }
+
+// ── BOOKMARKS ───────────────────────────────────────────────────
+function toggleBookmarks() {
+  bmOpen = !bmOpen;
+  document.getElementById('bmPanel').classList.toggle('open', bmOpen);
+  document.getElementById('bmToggleBtn').classList.toggle('on', bmOpen);
+  renderBookmarks();
+}
+function addBookmark() {
+  const doc = activeDoc(); if (!doc) return showToast('Abra um PDF primeiro.','error');
+  if (!bookmarks[doc.id]) bookmarks[doc.id] = [];
+  if (bookmarks[doc.id].find(b=>b.page===doc.currentPage))
+    return showToast(`Página ${doc.currentPage} já está nos favoritos`,'error');
+  bookmarks[doc.id].push({ page:doc.currentPage, note:`Página ${doc.currentPage}`, ts:Date.now() });
+  bookmarks[doc.id].sort((a,b)=>a.page-b.page);
+  savePrefs(); renderBookmarks();
+  if (!bmOpen) toggleBookmarks();
+  showToast(`🔖 Página ${doc.currentPage} adicionada`,'success');
+}
+function removeBookmark(docId, page, e) {
+  if (e) e.stopPropagation();
+  if (!bookmarks[docId]) return;
+  bookmarks[docId] = bookmarks[docId].filter(b=>b.page!==page);
+  savePrefs(); renderBookmarks();
+}
+function renderBookmarks() {
+  const doc  = activeDoc();
+  const list = document.getElementById('bmList');
+  const bms  = doc ? (bookmarks[doc.id]||[]) : [];
+  if (!bms.length) { list.innerHTML='<div class="bm-empty">Nenhum favorito</div>'; return; }
+  list.innerHTML = bms.map(b => `
+    <div class="bm-item${doc&&b.page===doc.currentPage?' active-doc':''}" onclick="jumpToBookmark(${b.page})">
+      <span class="bm-pg">p.${b.page}</span>
+      <span class="bm-note">${esc(b.note)}</span>
+      <span class="bm-del" onclick="removeBookmark(${doc.id},${b.page},event)">×</span>
+    </div>`).join('');
+}
+async function jumpToBookmark(page) {
+  await goToPage(page);
+  if (window.innerWidth<=680) document.getElementById('app').classList.remove('sidebar-visible');
+}
+
+// ── NOTES ───────────────────────────────────────────────────────
+function toggleNotes() {
+  notesOpen = !notesOpen;
+  document.getElementById('notesPanel').classList.toggle('open', notesOpen);
+  document.getElementById('notesToggleBtn').classList.toggle('on', notesOpen);
+  savePrefs();
+}
+function loadNotes() {
+  const doc = activeDoc();
+  const ta  = document.getElementById('notesArea');
+  ta.value  = doc ? (notesData[doc.id]||'') : '';
+}
+function saveNotes() {
+  const doc = activeDoc(); if (!doc) return;
+  notesData[doc.id] = document.getElementById('notesArea').value;
+  savePrefs();
+}
+async function copyNotes() {
+  const txt = document.getElementById('notesArea').value;
+  if (!txt) return showToast('Nenhuma nota para copiar.','error');
+  try { await navigator.clipboard.writeText(txt); showToast('Notas copiadas ✓','success'); }
+  catch(_) { showToast('Erro ao copiar.','error'); }
+}
+function clearNotes() {
+  document.getElementById('notesArea').value = '';
+  saveNotes();
+  showToast('Notas limpas','success');
+}
+
+// ── THEME ───────────────────────────────────────────────────────
+function toggleTheme() {
+  isDark = !isDark;
+  document.body.classList.toggle('light', !isDark);
+  savePrefs();
+}
+
+// ── FONT SIZE & LINE SPACING ────────────────────────────────────
+function changeFontSize(d) {
+  fontSize = Math.max(10, Math.min(28, fontSize+d));
+  document.getElementById('fontSizeVal').textContent    = fontSize;
+  document.getElementById('fontSizeValMob').textContent = fontSize;
+  const tc = document.getElementById('textContent');
+  if (tc) tc.style.fontSize = fontSize+'px';
+  savePrefs();
+}
+function changeLineSpacing(d) {
+  lineSpacing = Math.max(1.2, Math.min(3.5, +(lineSpacing+d).toFixed(1)));
+  document.getElementById('lineSpacingVal').textContent = lineSpacing.toFixed(1);
+  const tc = document.getElementById('textContent');
+  if (tc) tc.style.lineHeight = lineSpacing;
+  savePrefs();
+}
+
+// ── HIGHLIGHT COLOR ─────────────────────────────────────────────
+function setHlColor(swatch) {
+  hlColor = swatch.dataset.color;
+  document.querySelectorAll('.hl-swatch').forEach(s=>s.classList.remove('active'));
+  swatch.classList.add('active');
+  applyHlColor(); savePrefs();
+}
+function applyHlColor() {
+  let st = document.getElementById('hlColorStyle');
+  if (!st) { st=document.createElement('style'); st.id='hlColorStyle'; document.head.appendChild(st); }
+  const tc = hlColor === '#ffffff' ? '#1a1508' : '#1a1508';
+  st.textContent = `.word.hl{background:${hlColor}!important;color:${tc}!important}.karaoke-words .kw.active{color:${hlColor}!important}.textLayer span.pdf-hl{background:${hlColor}44!important;box-shadow:0 0 0 1px ${hlColor}99!important}`;
+}
+
+// ── EXPORT / COPY ───────────────────────────────────────────────
+function exportText(mode) {
+  const doc = activeDoc(); if (!doc) return showToast('Abra um PDF primeiro.','error');
+  let text, filename;
+  if (mode==='page') {
+    text = doc.allPagesText[doc.currentPage]||'';
+    filename = `${doc.name.replace('.pdf','')}_p${doc.currentPage}.txt`;
+  } else {
+    text = doc.allPagesText.slice(1).map((t,i)=>`\n─── Página ${i+1} ───\n\n${t}`).join('\n');
+    filename = `${doc.name.replace('.pdf','')}_texto.txt`;
+  }
+  if (!text.trim()) return showToast('Nenhum texto para exportar.','error');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));
+  a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+  showToast(`Exportado: ${filename}`,'success');
+}
+async function copyPageText() {
+  const doc = activeDoc(); if (!doc) return;
+  const txt = doc.allPagesText[doc.currentPage]||'';
+  if (!txt) return showToast('Nenhum texto para copiar.','error');
+  try { await navigator.clipboard.writeText(txt); showToast('Texto copiado ✓','success'); }
+  catch(_) { showToast('Não foi possível copiar.','error'); }
+}
+
+// ── FULLSCREEN ──────────────────────────────────────────────────
+function toggleFullscreen() {
+  const el = document.getElementById('viewerMain');
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    (el.requestFullscreen||el.webkitRequestFullscreen).call(el);
+    document.getElementById('btnFullscreen').classList.add('active');
+  } else {
+    (document.exitFullscreen||document.webkitExitFullscreen).call(document);
+    document.getElementById('btnFullscreen').classList.remove('active');
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) document.getElementById('btnFullscreen').classList.remove('active');
+});
+
+// ── STATS ───────────────────────────────────────────────────────
+function updateStats(abs) {
+  const doc = activeDoc(); if (!doc||!words.length) return;
+  const pct = Math.round(abs/words.length*100);
+  const updateEl = (base,val) => {
+    const a=document.getElementById('stat'+base); const b=document.getElementById('stat'+base+'Mob');
+    if(a) a.textContent=val; if(b) b.textContent=val;
+  };
+  updateEl('Words', words.length);
+  updateEl('Pct',   pct+'%');
+  if (isPlaying) {
+    if (!readingStartTime) { readingStartTime=Date.now(); wordsReadCount=0; }
+    wordsReadCount++;
+    const elapsed = (Date.now()-readingStartTime)/60000;
+    liveWpm = elapsed>0 ? Math.round(wordsReadCount/elapsed) : 0;
+    updateEl('Wpm', liveWpm||'—');
+    const rem = words.length - abs;
+    const wpm = liveWpm>0 ? liveWpm : 200;
+    const mins = Math.ceil(rem/wpm);
+    updateEl('Eta', mins>0 ? `${mins}m` : '<1m');
+  }
+}
+function resetStats() {
+  readingStartTime=null; wordsReadCount=0; liveWpm=0;
+  ['Wpm','Eta'].forEach(k => {
+    const a=document.getElementById('stat'+k); const b=document.getElementById('stat'+k+'Mob');
+    if(a) a.textContent='—'; if(b) b.textContent='—';
+  });
+}
+
+// ── THUMBNAILS ──────────────────────────────────────────────────
+async function toggleThumbs() {
+  thumbsOpen = !thumbsOpen;
+  const panel = document.getElementById('thumbPanel');
+  const btn   = document.getElementById('btnThumb');
+  panel.classList.toggle('open', thumbsOpen);
+  btn.classList.toggle('active', thumbsOpen);
+  if (thumbsOpen && !thumbsBuilt) await buildThumbs();
+  savePrefs();
+}
+async function buildThumbs() {
+  const doc = activeDoc(); if (!doc) return;
+  const panel = document.getElementById('thumbPanel');
+  panel.innerHTML = ''; thumbsBuilt = false;
+  for (let i=1; i<=doc.totalPages; i++) {
+    const page = await doc.pdfDoc.getPage(i);
+    const vp   = page.getViewport({ scale:0.18 });
+    const wrap = document.createElement('div');
+    wrap.className = 'thumb-item'+(i===doc.currentPage?' active':'');
+    wrap.dataset.page = i;
+    wrap.onclick = () => goToPage(i);
+    const canvas = document.createElement('canvas');
+    canvas.width=vp.width; canvas.height=vp.height;
+    await page.render({ canvasContext:canvas.getContext('2d'), viewport:vp }).promise;
+    const num = document.createElement('div');
+    num.className='thumb-num'; num.textContent=i;
+    wrap.appendChild(canvas); wrap.appendChild(num);
+    panel.appendChild(wrap);
+  }
+  thumbsBuilt = true;
+  updateThumbActive();
+}
+function updateThumbActive() {
+  const doc = activeDoc(); if (!doc) return;
+  document.querySelectorAll('.thumb-item').forEach(t =>
+    t.classList.toggle('active', parseInt(t.dataset.page)===doc.currentPage));
+  const at = document.querySelector('.thumb-item.active');
+  if (at) at.scrollIntoView({ block:'nearest', behavior:'smooth' });
+}
+
+// ── RSVP ────────────────────────────────────────────────────────
+function openRsvp() {
+  if (!words.length) return showToast('Nenhum texto carregado.','error');
+  rsvpIdx = wordIndex; rsvpActive = true;
+  document.getElementById('rsvpOverlay').classList.add('open');
+  renderRsvpWord();
+}
+function closeRsvp() { stopRsvp(); rsvpActive=false; document.getElementById('rsvpOverlay').classList.remove('open'); }
+function toggleRsvp() { rsvpPlaying ? stopRsvp() : startRsvp(); }
+function startRsvp() {
+  if (!words.length) return;
+  rsvpPlaying = true;
+  document.getElementById('rsvpPlayBtn').textContent = '⏸ Pausar';
+  const ms = Math.round(60000/rsvpWpm);
+  rsvpTimer = setInterval(() => {
+    if (rsvpIdx >= words.length-1) { stopRsvp(); closeRsvp(); return; }
+    rsvpIdx++; renderRsvpWord();
+  }, ms);
+}
+function stopRsvp() {
+  rsvpPlaying = false; clearInterval(rsvpTimer); rsvpTimer = null;
+  document.getElementById('rsvpPlayBtn').textContent = '▶ Iniciar';
+}
+function renderRsvpWord() {
+  const w = words[rsvpIdx]||'—';
+  document.getElementById('rsvpWord').textContent = w;
+  document.getElementById('rsvpPos').textContent  = `${rsvpIdx+1} / ${words.length}`;
+  document.getElementById('rsvpFill').style.width = (rsvpIdx/words.length*100)+'%';
+  document.getElementById('rsvpWpmDisplay').textContent = rsvpWpm+' WPM';
+}
+function rsvpSkip(n) { rsvpIdx=Math.max(0,Math.min(words.length-1,rsvpIdx+n)); renderRsvpWord(); }
+function updateRsvpWpm(v) {
+  rsvpWpm = parseInt(v);
+  document.getElementById('rsvpWpmVal').textContent = rsvpWpm;
+  if (rsvpPlaying) { stopRsvp(); startRsvp(); }
+}
+
+// ── VOICE CHANGE ────────────────────────────────────────────────
+function updateLoquendoBadge() { /* Loquendo engine removed — no-op */ }
+
+// ── DICIONÁRIO INLINE ────────────────────────────────────────────
+// Ao clicar com Ctrl numa palavra, abre o Wiktionary em tooltip
+let dictPopup = null;
+async function lookupWord(word, anchorEl) {
+  if (!word) return;
+  const clean = word.replace(/[^a-záàâãéèêíïóôõöúüçñ]/gi,'').toLowerCase();
+  if (!clean) return;
+  closeDictPopup();
+  dictPopup = document.createElement('div');
+  dictPopup.id = 'dictPopup';
+  dictPopup.style.cssText = `position:fixed;z-index:600;background:var(--bg2);border:1px solid var(--border);
+    border-radius:10px;padding:12px 14px;box-shadow:0 8px 32px rgba(0,0,0,.5);
+    max-width:280px;font-size:12px;color:var(--text2);line-height:1.6`;
+  dictPopup.innerHTML = `<div style="font-weight:600;color:var(--accent);margin-bottom:6px;font-size:13px">${esc(clean)}</div>
+    <div style="color:var(--text3);font-size:11px">Buscando definição…</div>
+    <button onclick="closeDictPopup()" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px">×</button>`;
+  document.body.appendChild(dictPopup);
+  positionPopupNear(anchorEl, dictPopup);
+
+  try {
+    const res  = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/pt/${encodeURIComponent(clean)}`);
+    const data = await res.json();
+    if (Array.isArray(data) && data[0]) {
+      const meanings = data[0].meanings?.slice(0,2).map(m => {
+        const def = m.definitions?.[0]?.definition || '';
+        return `<div style="margin-top:6px"><span style="color:var(--accent);font-size:10px;text-transform:uppercase">${m.partOfSpeech}</span><br>${esc(def)}</div>`;
+      }).join('') || 'Sem definição disponível.';
+      dictPopup.innerHTML = `<div style="font-weight:600;color:var(--accent);margin-bottom:4px;font-size:13px">${esc(clean)}</div>
+        ${meanings}
+        <a href="https://www.dicionarioinformal.com.br/${encodeURIComponent(clean)}" target="_blank" style="display:inline-block;margin-top:8px;font-size:10px;color:var(--accent);opacity:.7">Ver mais →</a>
+        <button onclick="closeDictPopup()" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px">×</button>`;
+    } else {
+      dictPopup.innerHTML = `<div style="font-weight:600;color:var(--accent);margin-bottom:4px;font-size:13px">${esc(clean)}</div>
+        <div style="color:var(--text3)">Palavra não encontrada no dicionário.</div>
+        <button onclick="closeDictPopup()" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px">×</button>`;
+    }
+  } catch(_) {
+    dictPopup.innerHTML = `<div style="font-weight:600;color:var(--accent);margin-bottom:4px;font-size:13px">${esc(clean)}</div>
+      <div style="color:var(--text3)">Sem conexão ou erro na busca.</div>
+      <button onclick="closeDictPopup()" style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px">×</button>`;
+  }
+}
+function positionPopupNear(el, popup) {
+  if (!el) { popup.style.top='50%'; popup.style.left='50%'; popup.style.transform='translate(-50%,-50%)'; return; }
+  const r = el.getBoundingClientRect();
+  let top = r.bottom + 6, left = r.left;
+  if (top + 180 > window.innerHeight) top = r.top - 186;
+  if (left + 290 > window.innerWidth) left = window.innerWidth - 296;
+  popup.style.top = top+'px'; popup.style.left = Math.max(8,left)+'px';
+}
+function closeDictPopup() { if (dictPopup) { dictPopup.remove(); dictPopup = null; } }
+document.addEventListener('click', e => {
+  if (dictPopup && !dictPopup.contains(e.target) && !e.target.classList.contains('word')) closeDictPopup();
+});
+
+// ── SLEEP TIMER ──────────────────────────────────────────────────
+let sleepTimer = null;
+let sleepRemaining = 0;
+let sleepInterval = null;
+function setSleepTimer(minutes) {
+  clearSleepTimer();
+  if (!minutes) return;
+  sleepRemaining = minutes * 60;
+  showToast(`⏰ Sleep timer: ${minutes} min`, 'success');
+  sleepInterval = setInterval(() => {
+    sleepRemaining--;
+    const el = document.getElementById('sleepTimerLabel');
+    if (el) el.textContent = sleepRemaining > 0 ? formatSleepTime(sleepRemaining) : '';
+    if (sleepRemaining <= 0) {
+      clearSleepTimer();
+      stopReading();
+      showToast('⏰ Sleep timer: leitura pausada', 'success');
+    }
+  }, 1000);
+}
+function clearSleepTimer() {
+  clearInterval(sleepInterval); sleepInterval = null; sleepRemaining = 0;
+  const el = document.getElementById('sleepTimerLabel'); if (el) el.textContent = '';
+  const sel = document.getElementById('sleepSelect'); if (sel) sel.value = '0';
+}
+function formatSleepTime(s) { const m=Math.floor(s/60), sec=s%60; return `${m}:${String(sec).padStart(2,'0')}`; }
+
+// ── PINCH ZOOM (mobile PDF) ──────────────────────────────────────
+let pinchDist0 = 0, pinchZoom0 = 1;
+const CC = () => document.getElementById('canvasContainer');
+CC().addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    pinchDist0 = Math.hypot(dx, dy);
+    pinchZoom0 = zoom;
+  }
+}, { passive:true });
+CC().addEventListener('touchmove', e => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.hypot(dx, dy);
+    const newZoom = Math.max(0.3, Math.min(4, pinchZoom0 * (dist / pinchDist0)));
+    zoom = +newZoom.toFixed(2);
+    syncZoomDisplay();
+  }
+}, { passive:false });
+CC().addEventListener('touchend', async e => {
+  if (e.touches.length < 2 && pinchDist0 > 0) {
+    pinchDist0 = 0;
+    await renderCurrentPage();
+    savePrefs();
+  }
+}, { passive:true });
+
+// ── AUTO-SCROLL PDF (segue a leitura no viewer) ──────────────────
+// Quando o destaque no PDF muda de página (modo "all"), rola suavemente
+let lastHighlightedPage = -1;
+function scrollPdfToPage(pageNum) {
+  if (viewMode !== 'all' || pageNum === lastHighlightedPage) return;
+  lastHighlightedPage = pageNum;
+  const wrapper = document.querySelector(`.page-wrapper[data-page-num="${pageNum}"]`);
+  if (wrapper) wrapper.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+// ── LEITURA GUIADA (sentence chunking) ───────────────────────────
+// Divide o texto em frases e lê uma por vez, pausando entre elas
+let guidedMode = false;
+let guidedSentences = [];
+let guidedIdx = 0;
+
+function toggleGuidedMode() {
+  guidedMode = !guidedMode;
+  const btn = document.getElementById('btnGuided');
+  if (btn) btn.classList.toggle('active', guidedMode);
+  showToast(guidedMode ? '🔠 Leitura guiada ativa' : '🔠 Leitura guiada desativada');
+  savePrefs();
+}
+
+function buildSentences(text) {
+  return text.match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g)?.map(s=>s.trim()).filter(Boolean) || [text];
+}
+
+// ── COPIAR POSIÇÃO ATUAL ─────────────────────────────────────────
+async function copyCurrentPosition() {
+  const doc = activeDoc(); if (!doc) return showToast('Nenhum PDF aberto.', 'error');
+  const info = `📄 ${doc.name}\nPágina: ${doc.currentPage}/${doc.totalPages}\nPalavra: ${wordIndex+1}/${words.length}`;
+  try { await navigator.clipboard.writeText(info); showToast('Posição copiada ✓', 'success'); }
+  catch(_) { showToast('Erro ao copiar.', 'error'); }
+}
+
+// ── CONTEXTO MENU ────────────────────────────────────────────────
+function wordCtx(e, idx) { e.preventDefault(); ctxWordIdx = idx; showCtxMenu(e, idx); }
+function showCtxMenu(e, idx) {
+  ctxWordIdx = idx;
+  const menu = document.getElementById('ctxMenu');
+  menu.classList.add('open');
+  let x = e.clientX, y = e.clientY;
+  // keep inside viewport
+  const mw=180, mh=150;
+  if (x+mw > window.innerWidth)  x = window.innerWidth-mw-8;
+  if (y+mh > window.innerHeight) y = window.innerHeight-mh-8;
+  menu.style.left = x+'px';
+  menu.style.top  = y+'px';
+}
+function ctxAction(action) {
+  document.getElementById('ctxMenu').classList.remove('open');
+  if (action==='dict' && ctxWordIdx>=0) { const w=words[ctxWordIdx]; if(w) lookupWord(w, document.getElementById(`w${ctxWordIdx}`)); }
+  if (action==='readFromHere' && ctxWordIdx>=0) { wordIndex=ctxWordIdx; if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); } else highlightWord(ctxWordIdx); }
+  if (action==='copy' && ctxWordIdx>=0) { const w=words[ctxWordIdx]; if (w) { navigator.clipboard.writeText(w).catch(()=>{}); showToast(`Copiado: "${w}"`, 'success'); } }
+  if (action==='search') toggleSearch();
+  if (action==='bookmark') addBookmark();
+}
+document.addEventListener('click', e => { if (!document.getElementById('ctxMenu').contains(e.target)) document.getElementById('ctxMenu').classList.remove('open'); });
+document.addEventListener('contextmenu', e => { if (!e.target.classList.contains('word')) document.getElementById('ctxMenu').classList.remove('open'); });
+
+// ── KEYBOARD ────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (rsvpActive) {
+    if (e.key===' ')          { e.preventDefault(); toggleRsvp(); return; }
+    if (e.key==='Escape')     { closeRsvp(); return; }
+    if (e.key==='ArrowRight') { rsvpSkip(1);  return; }
+    if (e.key==='ArrowLeft')  { rsvpSkip(-1); return; }
+    return;
+  }
+  const tag = document.activeElement.tagName;
+  if (tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA') return;
+  if ((e.ctrlKey||e.metaKey) && e.key==='f') { e.preventDefault(); toggleSearch(); return; }
+  if (e.key===' ')            { e.preventDefault(); togglePlay(); }
+  if (e.key==='ArrowRight')   changePage(1);
+  if (e.key==='ArrowLeft')    changePage(-1);
+  if (e.key==='+'||e.key==='=') adjustZoom(.15);
+  if (e.key==='-')            adjustZoom(-.15);
+  if (e.key==='0')            resetZoom();
+  if (e.key==='Escape')       stopReading();
+  if (e.key==='k'||e.key==='K') toggleKaraoke();
+  if (e.key==='b'||e.key==='B') toggleSidebar();
+  if (e.key==='r'||e.key==='R') openRsvp();
+  if (e.key==='f'||e.key==='F') toggleFullscreen();
+  if (e.key==='t'||e.key==='T') toggleTheme();
+  if ((e.key==='m'||e.key==='M') && (e.ctrlKey||e.metaKey)) { e.preventDefault(); addBookmark(); }
+  else if (e.key==='m'||e.key==='M') toggleThumbs();
+  if ((e.ctrlKey||e.metaKey) && e.key==='Tab') {
+    e.preventDefault();
+    if (!docs.length) return;
+    const ci = docs.findIndex(d=>d.id===activeDocId);
+    const ni = e.shiftKey ? (ci-1+docs.length)%docs.length : (ci+1)%docs.length;
+    switchDoc(docs[ni].id);
+  }
+});
+
+// ── SWIPE NAVIGATION (mobile) ────────────────────────────────────
+let swipeX = 0;
+document.getElementById('viewerMain').addEventListener('touchstart', e => { swipeX = e.touches[0].clientX; }, { passive:true });
+document.getElementById('viewerMain').addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - swipeX;
+  if (Math.abs(dx) > 60) { if (dx<0) changePage(1); else changePage(-1); }
+}, { passive:true });
+
+window.addEventListener('beforeunload', () => savePrefs());
+
+// ── INIT ────────────────────────────────────────────────────────
+(async () => {
+  loadVoices();
+  try {
+    await openDB();
+    await restoreSession();
+  } catch(err) {
+    console.warn('IndexedDB indisponível:', err);
+  }
+})();
+</script>
+</body>
+</html>
