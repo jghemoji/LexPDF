@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>LexPDF 5.0 — Leitor Inteligente</title>
+<title>LexPDF — Leitor Inteligente</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -593,38 +593,55 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
   display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all .1s;flex-shrink:0}
 .lib-sheet-del:active{background:rgba(224,112,112,.15);color:var(--danger)}
 
+/* ── MOBILE SHEET — TABBED ── */
+.mob-sheet-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;overflow-x:auto;scrollbar-width:none}
+.mob-sheet-tabs::-webkit-scrollbar{display:none}
+.mob-sheet-tab{flex:1;min-width:54px;padding:10px 4px 9px;border:none;background:transparent;
+  color:var(--text3);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;
+  cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .18s;white-space:nowrap}
+.mob-sheet-tab svg{flex-shrink:0}
+.mob-sheet-tab:hover{color:var(--text2);background:var(--bg3)}
+.mob-sheet-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+/* Docs and Favoritos tabs get accent background to stand out */
+.mob-sheet-tab.accent-tab{color:var(--accent2)}
+.mob-sheet-tab.accent-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.mob-sheet-pane{display:none;flex-direction:column;overflow-y:auto;flex:1}
+.mob-sheet-pane.active{display:flex}
+/* notes pane textarea */
+.mob-notes-wrap{padding:14px 16px;display:flex;flex-direction:column;gap:8px;flex:1}
+.mob-notes-ta{width:100%;flex:1;min-height:180px;background:var(--bg3);border:1px solid var(--border);
+  color:var(--text);padding:10px 11px;border-radius:10px;font-family:'DM Sans',sans-serif;
+  font-size:14px;resize:none;outline:none;transition:border-color .2s}
+.mob-notes-ta:focus{border-color:var(--accent)}
+.mob-notes-actions{display:flex;gap:8px}
+.mob-notes-actions .btn-note-action{flex:1;padding:8px 0;font-size:13px;border-radius:8px}
+
 #fileInputMulti{display:none}
 
 /* ══════════════════════════════════════════════
    RESPONSIVE — MOBILE ≤ 680 px
 ══════════════════════════════════════════════ */
 @media (max-width:680px){
-  :root{--sidebar-w:100vw}
+  :root{--sidebar-w:0px;--tabs-h:0px}
 
   .app{
-    grid-template-columns:0 1fr;
-    grid-template-rows:var(--hdr-h) var(--tabs-h) 1fr;
+    grid-template-columns:1fr;
+    grid-template-rows:var(--hdr-h) 1fr;
+    grid-template-areas:"header""viewer";
   }
 
-  /* sidebar slides as full-screen overlay */
-  .sidebar{
-    position:fixed;top:calc(var(--hdr-h) + var(--tabs-h));left:0;bottom:0;
-    width:100vw;z-index:30;
-    transform:translateX(-100%);
-    transition:transform .28s ease;
-    opacity:1 !important;pointer-events:auto !important;
-    overflow-y:auto;
-  }
-  .app.sidebar-visible .sidebar{transform:translateX(0)}
-  .app.sidebar-visible::after{
-    content:'';position:fixed;inset:0;
-    top:calc(var(--hdr-h) + var(--tabs-h));
-    background:rgba(0,0,0,.5);z-index:29;
-  }
+  /* sidebar — completamente oculto no mobile */
+  .sidebar{display:none!important}
+  .sb-tabs{display:none!important}
+  .tabs-bar{display:none!important}
 
-  /* viewer + tabs always full-width */
-  .viewer{grid-column:1/-1}
-  .tabs-bar{grid-column:1/-1}
+  /* header: ocultar toggle de sidebar e botão lib mobile */
+  .btn-sidebar-toggle{display:none!important}
+  #mobileLibBtn{display:none!important}
+
+  /* viewer ocupa tudo */
+  .viewer{grid-column:1/-1;grid-row:2/-1}
 
   /* bottom bar visible */
   .mobile-bottom-bar{display:flex}
@@ -638,6 +655,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
 
   /* hide thumbnails on mobile */
   #thumbPanel{display:none!important}
+  #btnThumb{display:none!important}
 
   /* search bar full-width */
   .search-bar{right:8px;left:8px;min-width:unset;top:50px}
@@ -646,10 +664,13 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
   .doc-tab{max-width:115px}
   .tab-name{max-width:68px}
 
-  /* compact header */
+  /* header mobile: logo à esquerda, botão à direita, sem gap */
+  header{gap:0;padding:0 12px}
+  #modeBadge{display:none!important}
+  .hdr-sep{display:none!important}
+  .hdr-actions{margin-left:auto;gap:0}
   .btn-add span{display:none}
   .btn-add{padding:7px 10px}
-  .logo span{display:none}
 
   /* sidebar sections: larger touch targets */
   .sidebar-section{padding:12px 14px}
@@ -668,6 +689,9 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
 
   /* rsvp word smaller on narrow screens */
   .rsvp-word{font-size:clamp(28px,9vw,56px)}
+
+  /* hide keyboard shortcuts block inside desktop config pane on mobile */
+  .mob-hide-kbd{display:none!important}
 }
 </style>
 </head>
@@ -681,7 +705,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
         <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
       </svg>
     </button>
-    <div class="logo">LexPDF <span>Leitor Inteligente</span></div>
+    <div class="logo">LexPDF <span id="logo-subtitle">Leitor Inteligente</span></div>
     <div class="hdr-sep"></div>
     <div class="hdr-actions">
       <div class="mode-badge" id="modeBadge">
@@ -694,7 +718,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
       </button>
       <button class="btn-add" onclick="document.getElementById('fileInputMulti').click()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <span>Adicionar PDFs</span>
+        <span id="hdr-add-btn-lbl">Adicionar PDFs</span>
       </button>
     </div>
     <input type="file" id="fileInputMulti" accept=".pdf" multiple onchange="handleFiles(this.files);this.value=''">
@@ -713,19 +737,19 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
     <div class="sb-tabs">
       <button class="sb-tab active" id="sbTabReading" onclick="switchSbTab('reading')">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
-        Leitura
+        <span id="tab-lbl-reading">Leitura</span>
       </button>
       <button class="sb-tab" id="sbTabDocs" onclick="switchSbTab('docs')">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        Docs
+        <span id="tab-lbl-docs">Docs</span>
       </button>
       <button class="sb-tab" id="sbTabFav" onclick="switchSbTab('fav')">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
-        Favoritos
+        <span id="tab-lbl-fav">Favoritos</span>
       </button>
       <button class="sb-tab" id="sbTabCfg" onclick="switchSbTab('cfg')">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        Config
+        <span id="tab-lbl-cfg">Config</span>
       </button>
     </div>
 
@@ -901,13 +925,13 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
         <div class="cfg-row" style="flex-direction:column;align-items:flex-start;gap:6px">
           <div class="cfg-lbl" id="cfg-lbl-hlcolor">Cor de destaque</div>
           <div class="cfg-swatches" id="hlColors">
-            <div class="cfg-sw active" style="background:#e8c97a" data-color="#e8c97a" onclick="setHlColor(this)" title="Dourado"></div>
-            <div class="cfg-sw" style="background:#7adfe8" data-color="#7adfe8" onclick="setHlColor(this)" title="Ciano"></div>
-            <div class="cfg-sw" style="background:#a0e87a" data-color="#a0e87a" onclick="setHlColor(this)" title="Verde"></div>
-            <div class="cfg-sw" style="background:#e87aaf" data-color="#e87aaf" onclick="setHlColor(this)" title="Rosa"></div>
-            <div class="cfg-sw" style="background:#b07ae8" data-color="#b07ae8" onclick="setHlColor(this)" title="Roxo"></div>
-            <div class="cfg-sw" style="background:#e8a07a" data-color="#e8a07a" onclick="setHlColor(this)" title="Laranja"></div>
-            <div class="cfg-sw" style="background:#ffffff" data-color="#ffffff" onclick="setHlColor(this)" title="Branco"></div>
+            <div class="cfg-sw active" style="background:#f5c800" data-color="#f5c800" onclick="setHlColor(this)" title="Amarelo vívido"></div>
+            <div class="cfg-sw" style="background:#00c8f0" data-color="#00c8f0" onclick="setHlColor(this)" title="Ciano vívido"></div>
+            <div class="cfg-sw" style="background:#28e600" data-color="#28e600" onclick="setHlColor(this)" title="Verde vívido"></div>
+            <div class="cfg-sw" style="background:#ff2070" data-color="#ff2070" onclick="setHlColor(this)" title="Rosa vívido"></div>
+            <div class="cfg-sw" style="background:#9020ff" data-color="#9020ff" onclick="setHlColor(this)" title="Roxo vívido"></div>
+            <div class="cfg-sw" style="background:#ff6600" data-color="#ff6600" onclick="setHlColor(this)" title="Laranja vívido"></div>
+            <div class="cfg-sw" style="background:#ff2020" data-color="#ff2020" onclick="setHlColor(this)" title="Vermelho vívido"></div>
           </div>
         </div>
       </div>
@@ -947,7 +971,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
       </div>
 
       <!-- ATALHOS DE TECLADO -->
-      <div class="cfg-g">
+      <div class="cfg-g mob-hide-kbd">
         <div class="cfg-gtitle">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></svg>
           <span id="cfg-lbl-shortcuts">Atalhos de Teclado</span>
@@ -1051,31 +1075,31 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
     <div class="viewer-toolbar">
       <button class="view-btn active" id="btnViewSingle" onclick="setViewMode('single')">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-        Uma
+        <span id="lbl-view-single">Uma</span>
       </button>
       <button class="view-btn" id="btnViewAll" onclick="setViewMode('all')">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="9" height="10" rx="1"/><rect x="13" y="3" width="9" height="10" rx="1"/><rect x="2" y="15" width="9" height="6" rx="1"/><rect x="13" y="15" width="9" height="6" rx="1"/></svg>
-        Todas
+        <span id="lbl-view-all">Todas</span>
       </button>
       <div class="tb-sep"></div>
       <button class="view-btn" id="btnViewText" onclick="setViewMode('text')">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="15" y2="18"/></svg>
-        Texto
+        <span id="lbl-view-text">Texto</span>
       </button>
       <div class="tb-sep"></div>
       <button class="k-toggle-btn" id="karaokeToggleBtn" onclick="toggleKaraoke()" title="Karaokê (K)">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-        Karaokê
+        <span id="lbl-view-kara">Karaokê</span>
       </button>
       <div class="tb-sep"></div>
       <button class="view-btn" id="btnRsvp" onclick="openRsvp()" title="Modo foco RSVP (R)">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Foco
+        <span id="lbl-view-rsvp">Foco</span>
       </button>
       <div class="tb-sep"></div>
       <button class="view-btn" id="btnGuided" onclick="toggleGuidedMode()" title="Leitura guiada por frases">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h6"/></svg>
-        Guiada
+        <span id="lbl-view-guided">Guiada</span>
       </button>
       <div class="tb-sep"></div>
       <button class="view-btn" id="btnThumb" onclick="toggleThumbs()" title="Miniaturas">
@@ -1102,8 +1126,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
     <!-- SEARCH BAR -->
     <div class="search-bar" id="searchBar">
       <input class="search-input" id="searchInput" placeholder="Buscar no texto…"
-        oninput="doSearch()" onkeydown="onSearchKey(event)">
-      <span class="search-count" id="searchCount">0 / 0</span>
+        oninput="doSearch()" onkeydown="onSearchKey(event)">      <span class="search-count" id="searchCount">0 / 0</span>
       <button class="search-nav-btn" onclick="searchNav(-1)" title="Anterior">↑</button>
       <button class="search-nav-btn" onclick="searchNav(1)" title="Próximo">↓</button>
       <button class="search-close" onclick="toggleSearch()">×</button>
@@ -1124,12 +1147,12 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
             </svg>
           </div>
           <div class="upload-text">
-            <h3>Abra seus PDFs</h3>
-            <p>Arraste e solte um ou mais arquivos</p>
-            <div class="or">ou</div>
+            <h3 id="upload-title">Abra seus PDFs</h3>
+            <p id="upload-subtitle">Arraste e solte um ou mais arquivos</p>
+            <div class="or" id="upload-or">ou</div>
           </div>
-          <button class="btn-browse" onclick="event.stopPropagation();document.getElementById('fileInputMulti').click()">Procurar arquivos</button>
-          <p class="supported-fmts">Múltiplos PDFs · persistência automática</p>
+          <button class="btn-browse" id="upload-browse" onclick="event.stopPropagation();document.getElementById('fileInputMulti').click()">Procurar arquivos</button>
+          <p class="supported-fmts" id="upload-fmts">Múltiplos PDFs · persistência automática</p>
         </div>
       </div>
       <!-- THUMBNAILS -->
@@ -1145,7 +1168,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
     <div id="karaokePanel">
       <div class="karaoke-chip">
         <div class="karaoke-header">
-          <div class="karaoke-title"><div class="k-dot"></div>Acompanhamento de leitura</div>
+          <div class="karaoke-title"><div class="k-dot"></div><span id="kara-title-lbl">Acompanhamento de leitura</span></div>
           <button class="k-close" onclick="toggleKaraoke()">×</button>
         </div>
         <div class="karaoke-words" id="karaokeWords">
@@ -1179,97 +1202,241 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
   </button>
 </div>
 
-<!-- ══ MOBILE SETTINGS SHEET ══ -->
+<!-- ══ MOBILE SETTINGS SHEET (TABBED) ══ -->
 <div id="mobileSheet" onclick="closeMobileSheet(event)">
-  <div class="sheet-inner" onclick="event.stopPropagation()">
-    <div class="sheet-handle"></div>
+  <div class="sheet-inner" onclick="event.stopPropagation()" style="display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <div class="sheet-handle" style="flex-shrink:0;margin:10px auto 0"></div>
 
-    <div class="sheet-section">
-      <div class="sheet-title">🎙 Voz & Áudio</div>
-      <select class="voice-select" id="voiceSelectMob" onchange="onVoiceChangeMob()" style="margin-bottom:10px"></select>
-      <div class="slider-row">
-        <span class="slider-label">Velocidade</span>
-        <div class="slider-wrap"><input type="range" id="speedSliderMob" min="0.3" max="3" step="0.05" value="1" oninput="syncSlider('speed',this.value)"></div>
-        <span class="slider-val" id="speedValMob">1.0×</span>
-      </div>
-      <div class="slider-row">
-        <span class="slider-label">Volume</span>
-        <div class="slider-wrap"><input type="range" id="volumeSliderMob" min="0" max="1" step="0.05" value="1" oninput="syncSlider('volume',this.value)"></div>
-        <span class="slider-val" id="volumeValMob">100%</span>
-      </div>
+    <!-- ── ABAS ── -->
+    <div class="mob-sheet-tabs">
+      <!-- Leitura -->
+      <button class="mob-sheet-tab active" id="mst-leitura" onclick="switchMobTab('leitura')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+        Leitura
+      </button>
+      <!-- Config -->
+      <button class="mob-sheet-tab" id="mst-config" onclick="switchMobTab('config')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Config
+      </button>
+      <!-- Notas -->
+      <button class="mob-sheet-tab" id="mst-notas" onclick="switchMobTab('notas')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Notas
+      </button>
+      <!-- Docs (destaque) -->
+      <button class="mob-sheet-tab accent-tab" id="mst-docs" onclick="switchMobTab('docs')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Docs
+      </button>
+      <!-- Favoritos (destaque) -->
+      <button class="mob-sheet-tab accent-tab" id="mst-favoritos" onclick="switchMobTab('favoritos')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+        Favoritos
+      </button>
     </div>
 
-    <div class="sheet-section">
-      <div class="sheet-title">📄 Página</div>
-      <div class="sheet-row">
-        <span class="sheet-label">Ir para página</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <button class="page-nav-btn" onclick="changePage(-1)">‹</button>
-          <input type="number" class="page-input" id="pageInputMob" value="1" min="1"
-            onchange="goToPage(this.value)" onkeydown="if(event.key==='Enter')goToPage(this.value)" style="width:46px">
-          <span style="font-size:12px;color:var(--text3)" id="pageTotalMob">/ 0</span>
-          <button class="page-nav-btn" onclick="changePage(1)">›</button>
+    <!-- ══ PANE: LEITURA ══ -->
+    <div class="mob-sheet-pane active" id="mstp-leitura" style="overflow-y:auto;padding-bottom:calc(env(safe-area-inset-bottom)+16px)">
+      <div class="sheet-section">
+        <div class="sheet-title" id="mob-title-voice">🎙 Voz & Áudio</div>
+        <select class="voice-select" id="voiceSelectMob" onchange="onVoiceChangeMob()" style="margin-bottom:10px"></select>
+        <div class="slider-row">
+          <span class="slider-label" id="mob-lbl-speed">Velocidade</span>
+          <div class="slider-wrap"><input type="range" id="speedSliderMob" min="0.3" max="3" step="0.05" value="1" oninput="syncSlider('speed',this.value)"></div>
+          <span class="slider-val" id="speedValMob">1.0×</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label" id="mob-lbl-pitch">Tom</span>
+          <div class="slider-wrap"><input type="range" id="pitchSliderMob" min="0" max="2" step="0.05" value="1" oninput="syncSlider('pitch',this.value)"></div>
+          <span class="slider-val" id="pitchValMob">1.00</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label" id="mob-lbl-volume">Volume</span>
+          <div class="slider-wrap"><input type="range" id="volumeSliderMob" min="0" max="1" step="0.05" value="1" oninput="syncSlider('volume',this.value)"></div>
+          <span class="slider-val" id="volumeValMob">100%</span>
         </div>
       </div>
-    </div>
 
-    <div class="sheet-section">
-      <div class="sheet-title">⚙️ Opções</div>
-      <div class="sheet-row"><span class="sheet-label">Destacar palavra</span><div class="toggle on" id="highlightToggleMob" onclick="toggleOptMob('highlight')"></div></div>
-      <div class="sheet-row"><span class="sheet-label">Destacar no PDF</span><div class="toggle on" id="pdfHighlightToggleMob" onclick="toggleOptMob('pdfHighlight')"></div></div>
-      <div class="sheet-row"><span class="sheet-label">Auto-scroll</span><div class="toggle on" id="autoScrollToggleMob" onclick="toggleOptMob('autoScroll')"></div></div>
-      <div class="sheet-row"><span class="sheet-label">Leitura contínua</span><div class="toggle on" id="continueToggleMob" onclick="toggleOptMob('continue')"></div></div>
-      <div class="sheet-row"><span class="sheet-label">Pular pontuação</span><div class="toggle" id="skipPunctToggleMob" onclick="toggleOptMob('skipPunct')"></div></div>
-    </div>
-
-    <div class="sheet-section">
-      <div class="sheet-title">🎨 Aparência</div>
-      <div class="sheet-row">
-        <span class="sheet-label">Tamanho da fonte</span>
-        <div style="display:flex;align-items:center;gap:8px">
-          <button class="fs-btn" onclick="changeFontSize(-1)">A−</button>
-          <span class="fs-val" id="fontSizeValMob">15</span>
-          <button class="fs-btn" onclick="changeFontSize(1)">A+</button>
+      <div class="sheet-section">
+        <div class="sheet-title" id="mob-title-page">📄 Página</div>
+        <div class="sheet-row">
+          <span class="sheet-label" id="mob-lbl-goto">Ir para página</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button class="page-nav-btn" onclick="changePage(-1)">‹</button>
+            <input type="number" class="page-input" id="pageInputMob" value="1" min="1"
+              onchange="goToPage(this.value)" onkeydown="if(event.key==='Enter')goToPage(this.value)" style="width:46px">
+            <span style="font-size:12px;color:var(--text3)" id="pageTotalMob">/ 0</span>
+            <button class="page-nav-btn" onclick="changePage(1)">›</button>
+          </div>
         </div>
       </div>
-      <div class="sheet-row">
-        <span class="sheet-label">Tema</span>
-        <button class="icon-btn" onclick="toggleTheme()" style="width:auto;padding:0 10px;gap:5px;font-size:12px">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/></svg>
-          Claro/Escuro
+
+      <div class="sheet-section">
+        <div class="sheet-title" id="mob-title-opts">⚙️ Opções</div>
+        <div class="sheet-row"><span class="sheet-label" id="mob-lbl-hl">Destacar palavra</span><div class="toggle on" id="highlightToggleMob" onclick="toggleOptMob('highlight')"></div></div>
+        <div class="sheet-row"><span class="sheet-label" id="mob-lbl-pdfhl">Destacar no PDF</span><div class="toggle on" id="pdfHighlightToggleMob" onclick="toggleOptMob('pdfHighlight')"></div></div>
+        <div class="sheet-row"><span class="sheet-label" id="mob-lbl-scroll">Auto-scroll</span><div class="toggle on" id="autoScrollToggleMob" onclick="toggleOptMob('autoScroll')"></div></div>
+        <div class="sheet-row"><span class="sheet-label" id="mob-lbl-cont">Leitura contínua</span><div class="toggle on" id="continueToggleMob" onclick="toggleOptMob('continue')"></div></div>
+        <div class="sheet-row"><span class="sheet-label" id="mob-lbl-punct">Pular pontuação</span><div class="toggle" id="skipPunctToggleMob" onclick="toggleOptMob('skipPunct')"></div></div>
+      </div>
+
+      <div class="sheet-section">
+        <div class="sheet-title" id="mob-title-stats">📊 Estatísticas</div>
+        <div class="stats-row">
+          <div class="stat-chip"><span class="stat-val" id="statWordsMob">0</span><span class="stat-lbl" id="mob-lbl-stat-words">palavras</span></div>
+          <div class="stat-chip"><span class="stat-val" id="statWpmMob">—</span><span class="stat-lbl">WPM</span></div>
+          <div class="stat-chip"><span class="stat-val" id="statPctMob">0%</span><span class="stat-lbl" id="mob-lbl-stat-read">lido</span></div>
+          <div class="stat-chip"><span class="stat-val" id="statEtaMob">—</span><span class="stat-lbl" id="mob-lbl-stat-left">restante</span></div>
+        </div>
+      </div>
+
+      <div class="sheet-section">
+        <div class="sheet-title" id="mob-title-tools">🛠 Ferramentas</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-export" id="mob-btn-focus" onclick="openRsvp();closeMobileSheet()" style="flex:1;min-width:80px">Modo Foco</button>
+          <button class="btn-export" id="mob-btn-kara" onclick="toggleKaraoke();closeMobileSheet()" style="flex:1;min-width:80px">Karaokê</button>
+          <button class="btn-export" id="mob-btn-search" onclick="toggleSearch();closeMobileSheet()" style="flex:1;min-width:80px">Buscar</button>
+          <button class="btn-export" id="mob-btn-bm" onclick="addBookmark();closeMobileSheet()" style="flex:1;min-width:80px">Marcar pág.</button>
+          <button class="btn-export" id="mob-btn-export" onclick="exportText('page');closeMobileSheet()" style="flex:1;min-width:80px">Exportar</button>
+          <button class="btn-export" id="mob-btn-copy" onclick="copyPageText();closeMobileSheet()" style="flex:1;min-width:80px">Copiar</button>
+        </div>
+      </div>
+    </div><!-- /mstp-leitura -->
+
+    <!-- ══ PANE: CONFIG ══ -->
+    <div class="mob-sheet-pane" id="mstp-config" style="overflow-y:auto;padding-bottom:calc(env(safe-area-inset-bottom)+16px)">
+      <div class="sheet-section">
+        <div class="sheet-title">🎙 Voz & País</div>
+        <div class="sheet-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+          <span class="sheet-label" id="cfg-lbl-country-mob">Seu país / idioma</span>
+          <select class="country-picker" id="countryPickerMob" onchange="onCountryChangeMob()" style="width:100%">
+            <option value="">— Selecione seu país —</option>
+            <option value="pt-BR">🇧🇷 Brasil (Português)</option>
+            <option value="pt-PT">🇵🇹 Portugal (Português)</option>
+            <option value="en-US">🇺🇸 United States (English)</option>
+            <option value="en-GB">🇬🇧 United Kingdom (English)</option>
+            <option value="es-ES">🇪🇸 España (Español)</option>
+            <option value="es-MX">🇲🇽 México (Español)</option>
+            <option value="fr-FR">🇫🇷 France (Français)</option>
+            <option value="de-DE">🇩🇪 Deutschland (Deutsch)</option>
+            <option value="it-IT">🇮🇹 Italia (Italiano)</option>
+            <option value="ja-JP">🇯🇵 日本 (日本語)</option>
+            <option value="zh-CN">🇨🇳 中国 (中文)</option>
+            <option value="ko-KR">🇰🇷 한국 (한국어)</option>
+            <option value="ru-RU">🇷🇺 Россия (Русский)</option>
+            <option value="ar-SA">🇸🇦 العربية</option>
+            <option value="hi-IN">🇮🇳 India (हिन्दी)</option>
+            <option value="nl-NL">🇳🇱 Nederland (Nederlands)</option>
+            <option value="pl-PL">🇵🇱 Polska (Polski)</option>
+            <option value="tr-TR">🇹🇷 Türkiye (Türkçe)</option>
+            <option value="all">🌐 Todas as vozes</option>
+          </select>
+          <p class="voice-hint" id="voiceHintMob" style="font-size:11px;color:var(--text3);line-height:1.4">Selecione seu país para carregar as vozes.</p>
+        </div>
+      </div>
+
+      <div class="sheet-section">
+        <div class="sheet-title">🎨 Aparência</div>
+        <div class="sheet-row">
+          <span class="sheet-label" id="mob-lbl-fontsize">Tamanho da fonte</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="fs-btn" onclick="changeFontSize(-1)">A−</button>
+            <span class="fs-val" id="fontSizeValMob">15</span>
+            <button class="fs-btn" onclick="changeFontSize(1)">A+</button>
+          </div>
+        </div>
+        <div class="sheet-row">
+          <span class="sheet-label" id="mob-lbl-theme">Tema</span>
+          <button class="icon-btn" onclick="toggleTheme()" style="width:auto;padding:0 10px;gap:5px;font-size:12px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/></svg>
+            <span id="mob-lbl-theme-btn">Claro/Escuro</span>
+          </button>
+        </div>
+        <div class="sheet-row">
+          <span class="sheet-label" id="mob-lbl-zoom">Zoom PDF</span>
+          <div style="display:flex;align-items:center;gap:5px">
+            <button class="zoom-btn" onclick="adjustZoom(-.15)">−</button>
+            <span class="zoom-level" id="zoomLevelMob" style="color:var(--text)">100%</span>
+            <button class="zoom-btn" onclick="adjustZoom(.15)">+</button>
+          </div>
+        </div>
+        <div class="sheet-row">
+          <span class="sheet-label">Espaçamento de linha</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button class="fs-btn" onclick="changeLineSpacing(-0.1)">−</button>
+            <span class="fs-val" id="lineSpacingValMob" style="min-width:30px;text-align:center">2.0</span>
+            <button class="fs-btn" onclick="changeLineSpacing(0.1)">+</button>
+          </div>
+        </div>
+        <div class="sheet-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+          <span class="sheet-label">Cor de destaque</span>
+          <div id="hlColorsMob" style="display:flex;gap:10px;flex-wrap:wrap">
+            <div class="cfg-sw mob-sw active" style="background:#f5c800;width:28px;height:28px" data-color="#f5c800" onclick="setHlColor(this)" title="Amarelo"></div>
+            <div class="cfg-sw mob-sw" style="background:#00c8f0;width:28px;height:28px" data-color="#00c8f0" onclick="setHlColor(this)" title="Ciano"></div>
+            <div class="cfg-sw mob-sw" style="background:#28e600;width:28px;height:28px" data-color="#28e600" onclick="setHlColor(this)" title="Verde"></div>
+            <div class="cfg-sw mob-sw" style="background:#ff2070;width:28px;height:28px" data-color="#ff2070" onclick="setHlColor(this)" title="Rosa"></div>
+            <div class="cfg-sw mob-sw" style="background:#9020ff;width:28px;height:28px" data-color="#9020ff" onclick="setHlColor(this)" title="Roxo"></div>
+            <div class="cfg-sw mob-sw" style="background:#ff6600;width:28px;height:28px" data-color="#ff6600" onclick="setHlColor(this)" title="Laranja"></div>
+            <div class="cfg-sw mob-sw" style="background:#ff2020;width:28px;height:28px" data-color="#ff2020" onclick="setHlColor(this)" title="Vermelho"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sheet-section">
+        <div class="sheet-title">🔍 Modos de Visualização</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-export" onclick="setViewMode('single');closeMobileSheet()" style="flex:1;min-width:72px">Uma pág.</button>
+          <button class="btn-export" onclick="setViewMode('all');closeMobileSheet()" style="flex:1;min-width:72px">Todas</button>
+          <button class="btn-export" onclick="setViewMode('text');closeMobileSheet()" style="flex:1;min-width:72px">Texto</button>
+          <button class="btn-export" onclick="openRsvp();closeMobileSheet()" style="flex:1;min-width:72px">Foco RSVP</button>
+          <button class="btn-export" onclick="toggleGuidedMode();closeMobileSheet()" style="flex:1;min-width:72px">Guiada</button>
+          <button class="btn-export" onclick="toggleKaraoke();closeMobileSheet()" style="flex:1;min-width:72px">Karaokê</button>
+        </div>
+      </div>
+
+      <div class="sheet-section" style="border-bottom:none">
+        <div class="sheet-title">📋 Sobre</div>
+        <p style="font-size:12px;color:var(--text3);line-height:1.6" id="cfg-about-text-mob">Leitor de PDF com Text-to-Speech, múltiplos documentos, sessão persistente e modo foco RSVP.</p>
+      </div>
+    </div><!-- /mstp-config -->
+
+    <!-- ══ PANE: NOTAS ══ -->
+    <div class="mob-sheet-pane" id="mstp-notas">
+      <div class="mob-notes-wrap">
+        <div class="sheet-title" style="padding-top:4px">📝 Notas do documento</div>
+        <textarea class="mob-notes-ta" id="notesAreaMob" placeholder="Escreva suas notas aqui…" oninput="syncMobNotes()"></textarea>
+        <div class="mob-notes-actions">
+          <button class="btn-note-action" onclick="copyMobNotes()">Copiar notas</button>
+          <button class="btn-note-action" onclick="clearMobNotes()" style="color:var(--danger)">Limpar</button>
+        </div>
+      </div>
+    </div><!-- /mstp-notas -->
+
+    <!-- ══ PANE: DOCS ══ -->
+    <div class="mob-sheet-pane" id="mstp-docs" style="overflow-y:auto;padding-bottom:calc(env(safe-area-inset-bottom)+16px)">
+      <div style="padding:12px 16px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
+        <span style="font-size:13px;font-weight:600;color:var(--text)">📂 Documentos <span class="lib-count" id="libCountMobSheet" style="font-size:11px;background:var(--bg4);padding:1px 7px;border-radius:10px;margin-left:4px">0</span></span>
+        <button class="btn-add" onclick="document.getElementById('fileInputMulti').click();closeMobileSheet()" style="padding:5px 10px;font-size:12px">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Adicionar
         </button>
       </div>
-      <div class="sheet-row">
-        <span class="sheet-label">Zoom PDF</span>
-        <div style="display:flex;align-items:center;gap:5px">
-          <button class="zoom-btn" onclick="adjustZoom(-.15)">−</button>
-          <span class="zoom-level" id="zoomLevelMob" style="color:var(--text)">100%</span>
-          <button class="zoom-btn" onclick="adjustZoom(.15)">+</button>
-        </div>
+      <div id="mobSheetDocsList" style="padding:8px 12px;display:flex;flex-direction:column;gap:6px">
+        <div class="lib-empty">Nenhum documento carregado</div>
       </div>
-    </div>
+    </div><!-- /mstp-docs -->
 
-    <div class="sheet-section">
-      <div class="sheet-title">📊 Estatísticas</div>
-      <div class="stats-row">
-        <div class="stat-chip"><span class="stat-val" id="statWordsMob">0</span><span class="stat-lbl">palavras</span></div>
-        <div class="stat-chip"><span class="stat-val" id="statWpmMob">—</span><span class="stat-lbl">WPM</span></div>
-        <div class="stat-chip"><span class="stat-val" id="statPctMob">0%</span><span class="stat-lbl">lido</span></div>
-        <div class="stat-chip"><span class="stat-val" id="statEtaMob">—</span><span class="stat-lbl">restante</span></div>
+    <!-- ══ PANE: FAVORITOS ══ -->
+    <div class="mob-sheet-pane" id="mstp-favoritos" style="overflow-y:auto;padding-bottom:calc(env(safe-area-inset-bottom)+16px)">
+      <div style="padding:12px 16px 8px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
+        <span style="font-size:13px;font-weight:600;color:var(--text)">🔖 Favoritos</span>
+        <button class="icon-btn" onclick="addBookmark()" title="Marcar página atual" style="width:28px;height:28px;font-size:14px;font-weight:700">＋</button>
       </div>
-    </div>
-
-    <div class="sheet-section">
-      <div class="sheet-title">🛠 Ferramentas</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-export" onclick="openRsvp();closeMobileSheet()" style="flex:1;min-width:80px">Modo Foco</button>
-        <button class="btn-export" onclick="toggleKaraoke();closeMobileSheet()" style="flex:1;min-width:80px">Karaokê</button>
-        <button class="btn-export" onclick="toggleSearch();closeMobileSheet()" style="flex:1;min-width:80px">Buscar</button>
-        <button class="btn-export" onclick="addBookmark();closeMobileSheet()" style="flex:1;min-width:80px">Marcar pág.</button>
-        <button class="btn-export" onclick="exportText('page');closeMobileSheet()" style="flex:1;min-width:80px">Exportar</button>
-        <button class="btn-export" onclick="copyPageText();closeMobileSheet()" style="flex:1;min-width:80px">Copiar</button>
+      <div id="mobSheetBmList" style="padding:8px 12px;display:flex;flex-direction:column;gap:6px">
+        <div class="bm-empty">Nenhum favorito ainda</div>
       </div>
-    </div>
+    </div><!-- /mstp-favoritos -->
 
   </div>
 </div>
@@ -1278,16 +1445,16 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
 <div id="mobileLibSheet" onclick="closeMobileLib(event)">
   <div class="lib-sheet-inner" onclick="event.stopPropagation()">
     <div class="lib-sheet-header">
-      <span class="lib-sheet-title">📂 Arquivos <span class="lib-count" id="libCountMob" style="font-size:12px;background:var(--bg4);padding:1px 7px;border-radius:10px">0</span></span>
+      <span class="lib-sheet-title" id="mob-lib-title">📂 Arquivos <span class="lib-count" id="libCountMob" style="font-size:12px;background:var(--bg4);padding:1px 7px;border-radius:10px">0</span></span>
       <button class="lib-sheet-close" onclick="closeMobileLib()">×</button>
     </div>
     <div class="lib-sheet-body" id="libSheetBody">
-      <div class="lib-empty">Nenhum documento carregado</div>
+      <div class="lib-empty" id="mob-lib-empty">Nenhum documento carregado</div>
     </div>
     <div class="lib-sheet-add">
-      <button class="btn-add" onclick="document.getElementById('fileInputMulti').click();closeMobileLib()" style="width:100%;justify-content:center">
+      <button class="btn-add" id="mob-lib-add-btn" onclick="document.getElementById('fileInputMulti').click();closeMobileLib()" style="width:100%;justify-content:center">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Adicionar PDFs
+        <span id="mob-lib-add-lbl">Adicionar PDFs</span>
       </button>
     </div>
   </div>
@@ -1296,7 +1463,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
 <!-- ══ RSVP OVERLAY ══ -->
 <div id="rsvpOverlay">
   <button class="rsvp-close-btn" onclick="closeRsvp()">×</button>
-  <div class="rsvp-guide">MODO FOCO — UMA PALAVRA POR VEZ</div>
+  <div class="rsvp-guide" id="rsvp-guide-lbl">MODO FOCO — UMA PALAVRA POR VEZ</div>
   <div class="rsvp-word" id="rsvpWord">—</div>
   <div class="rsvp-progress"><div class="rsvp-progress-fill" id="rsvpFill"></div></div>
   <div class="rsvp-info">
@@ -1320,24 +1487,24 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
 <div id="ctxMenu">
   <div class="ctx-item" onclick="ctxAction('readFromHere')">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-    Ler a partir daqui
+    <span id="ctx-read-from">Ler a partir daqui</span>
   </div>
   <div class="ctx-item" onclick="ctxAction('copy')">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-    Copiar palavra
+    <span id="ctx-copy-word">Copiar palavra</span>
   </div>
   <div class="ctx-item" onclick="ctxAction('dict')">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
-    Buscar no dicionário
+    <span id="ctx-dict">Buscar no dicionário</span>
   </div>
   <div class="ctx-sep"></div>
   <div class="ctx-item" onclick="ctxAction('search')">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-    Buscar no texto
+    <span id="ctx-search">Buscar no texto</span>
   </div>
   <div class="ctx-item" onclick="ctxAction('bookmark')">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
-    Marcar página
+    <span id="ctx-bookmark">Marcar página</span>
   </div>
 </div>
 
@@ -1370,7 +1537,7 @@ let sidebarHidden  = false;
 let isDark         = true;
 let fontSize       = 15;
 let lineSpacing    = 2.0;
-let hlColor        = '#e8c97a';
+let hlColor        = '#f5c800';
 let bookmarks      = {};
 let notesData      = {};
 let bmOpen         = false;
@@ -1476,7 +1643,7 @@ function applyPrefs(p) {
   if (p.zoom)        { zoom = p.zoom; syncZoomDisplay(); }
   if (p.fontSize)    { fontSize = p.fontSize; document.getElementById('fontSizeVal').textContent = fontSize; document.getElementById('fontSizeValMob').textContent = fontSize; }
   if (p.lineSpacing) { lineSpacing = p.lineSpacing; document.getElementById('lineSpacingVal').textContent = lineSpacing.toFixed(1); }
-  if (p.hlColor && p.hlColor !== hlColor) { hlColor = p.hlColor; applyHlColor(); document.querySelectorAll('.hl-swatch').forEach(s => s.classList.toggle('active', s.dataset.color === hlColor)); }
+  if (p.hlColor && p.hlColor !== hlColor) { hlColor = p.hlColor; applyHlColor(); document.querySelectorAll('#hlColors .cfg-sw, #hlColorsMob .cfg-sw').forEach(s => s.classList.toggle('active', s.dataset.color === hlColor)); }
   if (p.isDark !== undefined && !p.isDark) { isDark = false; document.body.classList.add('light'); }
 
   const sliders = [
@@ -1603,14 +1770,127 @@ document.getElementById('app').addEventListener('click', e => {
 });
 
 // ── MOBILE SHEETS ───────────────────────────────────────────────
-function openMobileSheet() {
+// ── MOBILE SHEET (TABBED) ────────────────────────────────────────
+let activeMobTab = 'leitura';
+
+function switchMobTab(tab) {
+  activeMobTab = tab;
+  document.querySelectorAll('.mob-sheet-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.id === 'mst-' + tab);
+  });
+  document.querySelectorAll('.mob-sheet-pane').forEach(pane => {
+    pane.classList.toggle('active', pane.id === 'mstp-' + tab);
+  });
+  // Populate dynamic panes when opened
+  if (tab === 'docs')      renderMobSheetDocs();
+  if (tab === 'favoritos') renderMobSheetBm();
+  if (tab === 'notas')     syncMobNotesArea();
+}
+
+function openMobileSheet(tab) {
   syncMobileSliders();
   syncMobileVoice();
+  syncMobCountryPicker();
+  if (tab) switchMobTab(tab);
+  else     switchMobTab(activeMobTab);
   document.getElementById('mobileSheet').classList.add('open');
 }
+
 function closeMobileSheet(e) {
   if (!e || e.target === document.getElementById('mobileSheet'))
     document.getElementById('mobileSheet').classList.remove('open');
+}
+
+// Sync the mobile country picker with the desktop one
+function syncMobCountryPicker() {
+  const src = document.getElementById('countryPicker');
+  const dst = document.getElementById('countryPickerMob');
+  if (src && dst) dst.value = src.value;
+  const hint = document.getElementById('voiceHintEl');
+  const hintMob = document.getElementById('voiceHintMob');
+  if (hint && hintMob) hintMob.textContent = hint.textContent;
+}
+
+// Country change from mobile config tab → mirrors desktop picker
+function onCountryChangeMob() {
+  const mob = document.getElementById('countryPickerMob');
+  const src = document.getElementById('countryPicker');
+  if (src) src.value = mob.value;
+  onCountryChange(); // reuse desktop logic
+  const hint = document.getElementById('voiceHintEl');
+  const hintMob = document.getElementById('voiceHintMob');
+  if (hint && hintMob) hintMob.textContent = hint.textContent;
+}
+
+// Docs pane
+function renderMobSheetDocs() {
+  const cnt = document.getElementById('libCountMobSheet');
+  if (cnt) cnt.textContent = docs.length;
+  const list = document.getElementById('mobSheetDocsList');
+  if (!list) return;
+  if (!docs.length) { list.innerHTML = '<div class="lib-empty">Nenhum documento carregado</div>'; return; }
+  list.innerHTML = docs.map(doc => `
+    <div class="lib-sheet-item${doc.id===activeDocId?' active-doc':''}" onclick="switchDoc(${doc.id});closeMobileSheet()">
+      <div class="lib-sheet-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        </svg>
+      </div>
+      <div style="flex:1;overflow:hidden">
+        <div class="lib-sheet-name">${esc(doc.name)}</div>
+        <div class="lib-sheet-meta">${doc.totalPages} pág. · p.${doc.currentPage}</div>
+      </div>
+      <div class="lib-sheet-del" onclick="event.stopPropagation();removeDoc(${doc.id})">×</div>
+    </div>`).join('');
+}
+
+// Favoritos pane
+function renderMobSheetBm() {
+  const doc  = activeDoc();
+  const list = document.getElementById('mobSheetBmList');
+  if (!list) return;
+  const bms  = doc ? (bookmarks[doc.id]||[]) : [];
+  if (!bms.length) { list.innerHTML = '<div class="bm-empty">Nenhum favorito ainda</div>'; return; }
+  list.innerHTML = bms.map(b => `
+    <div class="bm-item${doc&&b.page===doc.currentPage?' active-doc':''}" onclick="jumpToBookmark(${b.page});closeMobileSheet()">
+      <span class="bm-pg">p.${b.page}</span>
+      <span class="bm-note">${esc(b.note)}</span>
+      <span class="bm-del" onclick="event.stopPropagation();removeBookmark(${doc.id},${b.page},event);renderMobSheetBm()">×</span>
+    </div>`).join('');
+}
+
+// Notes pane — sync with the desktop notes textarea
+function syncMobNotesArea() {
+  const doc = activeDoc();
+  const ta  = document.getElementById('notesAreaMob');
+  if (ta) ta.value = doc ? (notesData[doc.id]||'') : '';
+  const lsv = document.getElementById('lineSpacingValMob');
+  if (lsv) lsv.textContent = lineSpacing.toFixed(1);
+}
+function syncMobNotes() {
+  const doc = activeDoc(); if (!doc) return;
+  const ta  = document.getElementById('notesAreaMob');
+  if (!ta) return;
+  notesData[doc.id] = ta.value;
+  // keep desktop textarea in sync
+  const dtA = document.getElementById('notesArea');
+  if (dtA) dtA.value = ta.value;
+  savePrefs();
+}
+async function copyMobNotes() {
+  const ta = document.getElementById('notesAreaMob');
+  if (!ta || !ta.value) return showToast('Nenhuma nota para copiar.','error');
+  try { await navigator.clipboard.writeText(ta.value); showToast('Notas copiadas ✓','success'); }
+  catch(_) { showToast('Erro ao copiar.','error'); }
+}
+function clearMobNotes() {
+  const doc = activeDoc();
+  const ta  = document.getElementById('notesAreaMob');
+  if (ta) ta.value = '';
+  const dtA = document.getElementById('notesArea');
+  if (dtA) dtA.value = '';
+  if (doc) { notesData[doc.id] = ''; savePrefs(); }
+  showToast('Notas limpas','success');
 }
 function openMobileLib() {
   renderMobileLib();
@@ -1639,14 +1919,14 @@ function renderMobileLib() {
     </div>`).join('');
 }
 function syncMobileSliders() {
-  ['speed','volume'].forEach(k => {
+  ['speed','pitch','volume'].forEach(k => {
     const src = document.getElementById(k+'Slider');
     const dst = document.getElementById(k+'SliderMob');
     const vd  = document.getElementById(k+'ValMob');
     if (!src||!dst||!vd) return;
     dst.value = src.value;
     const n = parseFloat(src.value);
-    vd.textContent = k==='volume' ? Math.round(n*100)+'%' : n.toFixed(2)+'×';
+    vd.textContent = k==='volume' ? Math.round(n*100)+'%' : n.toFixed(2)+(k==='speed'?'×':'');
   });
   const pi = document.getElementById('pageInput');
   const pm = document.getElementById('pageInputMob');
@@ -1675,19 +1955,20 @@ function syncMobileVoice() {
 }
 function syncSlider(type, val) {
   const n = parseFloat(val);
-  // update main slider
+  const fmt = v => type==='volume' ? Math.round(v*100)+'%' : type==='pitch' ? v.toFixed(2) : v.toFixed(2)+'×';
   const mainSlider = document.getElementById(type+'Slider');
   const mainVal    = document.getElementById(type+'Val');
   if (mainSlider) mainSlider.value = val;
-  if (mainVal) mainVal.textContent = type==='volume' ? Math.round(n*100)+'%' : n.toFixed(2)+'×';
-  document.getElementById(type+'ValMob').textContent = type==='volume' ? Math.round(n*100)+'%' : n.toFixed(2)+'×';
-  if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); }
+  if (mainVal) mainVal.textContent = fmt(n);
+  const mobVal = document.getElementById(type+'ValMob');
+  if (mobVal) mobVal.textContent = fmt(n);
+  if (isPlaying) { speechSynthesis.cancel(); gTTS.cancel(); startSpeaking(); }
   savePrefs();
 }
 function onVoiceChangeMob() {
   const mob = document.getElementById('voiceSelectMob');
   document.getElementById('voiceSelect').value = mob.value;
-  if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); }
+  if (isPlaying) { speechSynthesis.cancel(); gTTS.cancel(); startSpeaking(); }
   savePrefs();
 }
 function toggleOptMob(k) {
@@ -1740,36 +2021,63 @@ let selectedCountry = '';
 
 // Per-country translations for key UI strings
 const I18N = {
+  /* ── Português Brasil ─────────────────────────────── */
   'pt-BR': {
-    placeholder: 'Selecione um país acima…', hint_none: 'Selecione seu país para carregar as vozes.',
-    hint_ok: (n, lbl) => `${n} voz${n>1?'es':''} encontrada${n>1?'s':''} para ${lbl}.`,
-    hint_miss: (lbl) => `Nenhuma voz para ${lbl} encontrada. Instale vozes nas configurações do seu sistema.`,
-    audio: '⚙️ Configurações de Áudio', speed: 'Velocidade', pitch: 'Tom', volume: 'Volume',
-    stats: '📊 Estatísticas', words: 'palavras', read: 'lido', left: 'restante',
-    page_btn: 'Pág.', all_btn: 'Tudo', copy_btn: 'Copiar',
-    notes: '📝 Notas', copy_notes: 'Copiar notas', clear_notes: 'Limpar',
-    library: '📂 Biblioteca', lib_empty: 'Nenhum documento carregado',
-    bookmarks: '🔖 Favoritos', bm_empty: 'Nenhum favorito ainda',
-    bm_hint: 'Pressione M para marcar a página atual',
-    page: 'Página', current_word: 'palavra atual', open_pdf: 'Abra um PDF para\ncomeçar a leitura',
-    cfg_voice: 'Voz & Narração', cfg_country: 'Seu país / idioma', cfg_country_sub: 'Filtra as vozes disponíveis no sistema',
-    cfg_voicesel: 'Voz selecionada', cfg_appearance: 'Aparência', cfg_theme: 'Tema',
-    cfg_fontsize: 'Tamanho da fonte', cfg_spacing: 'Espaçamento de linha', cfg_hlcolor: 'Cor de destaque',
-    cfg_readopts: 'Opções de Leitura', cfg_hl: 'Destacar palavra (texto)', cfg_pdfhl: 'Destacar no PDF',
-    cfg_scroll: 'Auto-scroll texto', cfg_cont: 'Leitura contínua', cfg_cont_sub: 'Avança de página ao terminar',
-    cfg_punct: 'Pular pontuação', cfg_guided: 'Leitura guiada (frases)', cfg_guided_sub: 'Lê frase por frase',
-    cfg_sleep: 'Timer de sono', cfg_shortcuts: 'Atalhos de Teclado', cfg_about: 'Sobre',
-    cfg_about_text: 'Leitor de PDF com Text-to-Speech, múltiplos documentos, sessão persistente e modo foco RSVP. Sessão salva automaticamente via IndexedDB.',
-    kd: { play:'Play / Pausar narração', page:'Página anterior / próxima', stop:'Parar narração',
+    placeholder:'Selecione um país acima…', hint_none:'Selecione seu país para carregar as vozes.',
+    hint_ok:(n,lbl)=>`${n} voz${n>1?'es':''} encontrada${n>1?'s':''} para ${lbl}.`,
+    hint_miss:(lbl)=>`Nenhuma voz para ${lbl}. Instale vozes nas configurações do sistema.`,
+    tab_reading:'Leitura', tab_docs:'Docs', tab_fav:'Favoritos', tab_cfg:'Config',
+    view_single:'Uma', view_all:'Todas', view_text:'Texto', view_kara:'Karaokê',
+    view_rsvp:'Foco', view_guided:'Guiada',
+    audio:'⚙️ Configurações de Áudio', speed:'Velocidade', pitch:'Tom', volume:'Volume',
+    stats:'📊 Estatísticas', words:'palavras', read:'lido', left:'restante',
+    page_btn:'Pág.', all_btn:'Tudo', copy_btn:'Copiar',
+    notes:'📝 Notas', copy_notes:'Copiar notas', clear_notes:'Limpar',
+    library:'📂 Biblioteca', lib_empty:'Nenhum documento carregado',
+    bookmarks:'🔖 Favoritos', bm_empty:'Nenhum favorito ainda',
+    bm_hint:'Pressione M para marcar a página atual',
+    page:'Página', current_word:'palavra atual', open_pdf:'Abra um PDF para\ncomeçar a leitura',
+    upload_title:'Abra seus PDFs', upload_sub:'Arraste e solte um ou mais arquivos',
+    upload_or:'ou', upload_browse:'Procurar arquivos', upload_fmts:'Múltiplos PDFs · persistência automática',
+    kara_title:'Acompanhamento de leitura', kara_hint:'Inicie a leitura para ver o acompanhamento…',
+    search_ph:'Buscar no texto…',
+    rsvp_guide:'MODO FOCO — UMA PALAVRA POR VEZ', rsvp_start:'▶ Iniciar', rsvp_pause:'⏸ Pausar',
+    ctx_read:'Ler a partir daqui', ctx_copy:'Copiar palavra', ctx_dict:'Buscar no dicionário',
+    ctx_search:'Buscar no texto', ctx_bm:'Marcar página',
+    mob_voice:'🎙 Voz & Áudio', mob_page:'📄 Página', mob_opts:'⚙️ Opções',
+    mob_appear:'🎨 Aparência', mob_stats:'📊 Estatísticas', mob_tools:'🛠 Ferramentas',
+    mob_goto:'Ir para página', mob_hl:'Destacar palavra', mob_pdfhl:'Destacar no PDF',
+    mob_scroll:'Auto-scroll', mob_cont:'Leitura contínua', mob_punct:'Pular pontuação',
+    mob_fontsize:'Tamanho da fonte', mob_theme:'Tema', mob_theme_btn:'Claro/Escuro',
+    mob_zoom:'Zoom PDF', mob_focus:'Modo Foco', mob_kara:'Karaokê', mob_search:'Buscar',
+    mob_bm:'Marcar pág.', mob_export:'Exportar', mob_copy:'Copiar',
+    mob_lib_title:'📂 Arquivos', mob_lib_empty:'Nenhum documento carregado', mob_lib_add:'Adicionar PDFs',
+    status_ready:'Pronto', status_paused:'Pausado', status_stopped:'Parado', status_done:'Concluído',
+    cfg_voice:'Voz & Narração', cfg_country:'Seu país / idioma', cfg_country_sub:'Filtra as vozes disponíveis no sistema',
+    cfg_voicesel:'Voz selecionada', cfg_appearance:'Aparência', cfg_theme:'Tema',
+    cfg_fontsize:'Tamanho da fonte', cfg_spacing:'Espaçamento de linha', cfg_hlcolor:'Cor de destaque',
+    cfg_readopts:'Opções de Leitura', cfg_hl:'Destacar palavra (texto)', cfg_pdfhl:'Destacar no PDF',
+    cfg_scroll:'Auto-scroll texto', cfg_cont:'Leitura contínua', cfg_cont_sub:'Avança de página ao terminar',
+    cfg_punct:'Pular pontuação', cfg_guided:'Leitura guiada (frases)', cfg_guided_sub:'Lê frase por frase',
+    cfg_sleep:'Timer de sono', cfg_shortcuts:'Atalhos de Teclado', cfg_about:'Sobre',
+    cfg_about_text:'Leitor de PDF com Text-to-Speech, múltiplos documentos, sessão persistente e modo foco RSVP.',
+    kd:{ play:'Play / Pausar narração', page:'Página anterior / próxima', stop:'Parar narração',
       thumb:'Toggle miniaturas de página', kara:'Toggle Karaokê', side:'Mostrar / ocultar painel',
       rsvp:'Modo foco RSVP', full:'Tela cheia', theme:'Alternar tema claro/escuro',
       bm:'Marcar página como favorito', search:'Buscar no texto', zoom:'Zoom do PDF',
       zoomreset:'Resetar zoom', doc:'Próximo documento' },
-    sleep_off: 'Desligado',
+    sleep_off:'Desligado',
+    app_subtitle:'Leitor Inteligente', add_pdfs:'Adicionar PDFs', tabs_empty:'Nenhum PDF aberto',
+    reading:'Lendo', toast_no_pdf:'Abra um PDF primeiro.', toast_no_text:'Nenhum texto nesta página.',
   },
-  'pt-PT': { placeholder:'Selecione um país acima…', hint_none:'Selecione o seu país para carregar as vozes.',
+  /* ── Português Portugal ───────────────────────────── */
+  'pt-PT': {
+    placeholder:'Selecione um país acima…', hint_none:'Selecione o seu país para carregar as vozes.',
     hint_ok:(n,lbl)=>`${n} voz${n>1?'es':''} encontrada${n>1?'s':''} para ${lbl}.`,
-    hint_miss:(lbl)=>`Nenhuma voz para ${lbl}. Instale vozes nas configurações do seu sistema.`,
+    hint_miss:(lbl)=>`Nenhuma voz para ${lbl}. Instale vozes nas configurações do sistema.`,
+    tab_reading:'Leitura', tab_docs:'Docs', tab_fav:'Favoritos', tab_cfg:'Config',
+    view_single:'Uma', view_all:'Todas', view_text:'Texto', view_kara:'Karaokê',
+    view_rsvp:'Foco', view_guided:'Guiada',
     audio:'⚙️ Configurações de Áudio', speed:'Velocidade', pitch:'Tom', volume:'Volume',
     stats:'📊 Estatísticas', words:'palavras', read:'lido', left:'restante',
     page_btn:'Pág.', all_btn:'Tudo', copy_btn:'Copiar',
@@ -1777,6 +2085,22 @@ const I18N = {
     library:'📂 Biblioteca', lib_empty:'Nenhum documento carregado',
     bookmarks:'🔖 Favoritos', bm_empty:'Sem favoritos ainda', bm_hint:'Prima M para marcar a página',
     page:'Página', current_word:'palavra actual', open_pdf:'Abra um PDF para\ncomeçar a leitura',
+    upload_title:'Abra os seus PDFs', upload_sub:'Arraste e largue um ou mais ficheiros',
+    upload_or:'ou', upload_browse:'Procurar ficheiros', upload_fmts:'Múltiplos PDFs · persistência automática',
+    kara_title:'Acompanhamento de leitura', kara_hint:'Inicie a leitura para ver o acompanhamento…',
+    search_ph:'Pesquisar no texto…',
+    rsvp_guide:'MODO FOCO — UMA PALAVRA DE CADA VEZ', rsvp_start:'▶ Iniciar', rsvp_pause:'⏸ Pausar',
+    ctx_read:'Ler a partir daqui', ctx_copy:'Copiar palavra', ctx_dict:'Pesquisar no dicionário',
+    ctx_search:'Pesquisar no texto', ctx_bm:'Marcar página',
+    mob_voice:'🎙 Voz & Áudio', mob_page:'📄 Página', mob_opts:'⚙️ Opções',
+    mob_appear:'🎨 Aparência', mob_stats:'📊 Estatísticas', mob_tools:'🛠 Ferramentas',
+    mob_goto:'Ir para página', mob_hl:'Realçar palavra', mob_pdfhl:'Realçar no PDF',
+    mob_scroll:'Auto-scroll', mob_cont:'Leitura contínua', mob_punct:'Saltar pontuação',
+    mob_fontsize:'Tamanho da fonte', mob_theme:'Tema', mob_theme_btn:'Claro/Escuro',
+    mob_zoom:'Zoom PDF', mob_focus:'Modo Foco', mob_kara:'Karaokê', mob_search:'Pesquisar',
+    mob_bm:'Marcar pág.', mob_export:'Exportar', mob_copy:'Copiar',
+    mob_lib_title:'📂 Ficheiros', mob_lib_empty:'Nenhum documento carregado', mob_lib_add:'Adicionar PDFs',
+    status_ready:'Pronto', status_paused:'Pausado', status_stopped:'Parado', status_done:'Concluído',
     cfg_voice:'Voz & Narração', cfg_country:'País / idioma', cfg_country_sub:'Filtra as vozes disponíveis',
     cfg_voicesel:'Voz seleccionada', cfg_appearance:'Aparência', cfg_theme:'Tema',
     cfg_fontsize:'Tamanho da fonte', cfg_spacing:'Espaçamento de linha', cfg_hlcolor:'Cor de destaque',
@@ -1784,15 +2108,23 @@ const I18N = {
     cfg_scroll:'Auto-scroll', cfg_cont:'Leitura contínua', cfg_cont_sub:'Avança de página ao terminar',
     cfg_punct:'Saltar pontuação', cfg_guided:'Leitura guiada (frases)', cfg_guided_sub:'Lê frase a frase',
     cfg_sleep:'Temporizador de sono', cfg_shortcuts:'Atalhos de Teclado', cfg_about:'Sobre',
-    cfg_about_text:'Leitor de PDF com Text-to-Speech, múltiplos documentos e modo foco RSVP.',
-    kd:{play:'Play / Pausar',page:'Página anterior / próxima',stop:'Parar',thumb:'Miniaturas',
-      kara:'Karaokê',side:'Painel',rsvp:'Modo Foco',full:'Ecrã inteiro',theme:'Tema',
-      bm:'Marcar página',search:'Pesquisar',zoom:'Zoom PDF',zoomreset:'Reset zoom',doc:'Próx. documento'},
+    cfg_about_text:'Leitor de PDF com Text-to-Speech, multi-documentos e modo foco RSVP.',
+    kd:{ play:'Play / Pausar', page:'Página anterior / próxima', stop:'Parar',
+      thumb:'Miniaturas', kara:'Karaokê', side:'Painel', rsvp:'Modo Foco',
+      full:'Ecrã inteiro', theme:'Tema', bm:'Marcar página', search:'Pesquisar',
+      zoom:'Zoom PDF', zoomreset:'Reset zoom', doc:'Próx. documento' },
     sleep_off:'Desligado',
+    app_subtitle:'Leitor Inteligente', add_pdfs:'Adicionar PDFs', tabs_empty:'Nenhum PDF aberto',
+    reading:'Lendo', toast_no_pdf:'Abra um PDF primeiro.', toast_no_text:'Nenhum texto nesta página.',
   },
-  'en-US': { placeholder:'Select a country above…', hint_none:'Select your country to load available voices.',
+  /* ── English US ───────────────────────────────────── */
+  'en-US': {
+    placeholder:'Select a country above…', hint_none:'Select your country to load available voices.',
     hint_ok:(n,lbl)=>`${n} voice${n>1?'s':''} found for ${lbl}.`,
     hint_miss:(lbl)=>`No voices found for ${lbl}. Install voices in your system settings.`,
+    tab_reading:'Reading', tab_docs:'Docs', tab_fav:'Bookmarks', tab_cfg:'Settings',
+    view_single:'Single', view_all:'All', view_text:'Text', view_kara:'Karaoke',
+    view_rsvp:'Focus', view_guided:'Guided',
     audio:'⚙️ Audio Settings', speed:'Speed', pitch:'Pitch', volume:'Volume',
     stats:'📊 Statistics', words:'words', read:'read', left:'left',
     page_btn:'Page', all_btn:'All', copy_btn:'Copy',
@@ -1800,6 +2132,22 @@ const I18N = {
     library:'📂 Library', lib_empty:'No documents loaded',
     bookmarks:'🔖 Bookmarks', bm_empty:'No bookmarks yet', bm_hint:'Press M to bookmark current page',
     page:'Page', current_word:'current word', open_pdf:'Open a PDF to\nstart reading',
+    upload_title:'Open your PDFs', upload_sub:'Drag and drop one or more files',
+    upload_or:'or', upload_browse:'Browse files', upload_fmts:'Multiple PDFs · auto-save session',
+    kara_title:'Reading karaoke', kara_hint:'Start reading to see the karaoke…',
+    search_ph:'Search in text…',
+    rsvp_guide:'FOCUS MODE — ONE WORD AT A TIME', rsvp_start:'▶ Start', rsvp_pause:'⏸ Pause',
+    ctx_read:'Read from here', ctx_copy:'Copy word', ctx_dict:'Look up in dictionary',
+    ctx_search:'Search in text', ctx_bm:'Bookmark page',
+    mob_voice:'🎙 Voice & Audio', mob_page:'📄 Page', mob_opts:'⚙️ Options',
+    mob_appear:'🎨 Appearance', mob_stats:'📊 Statistics', mob_tools:'🛠 Tools',
+    mob_goto:'Go to page', mob_hl:'Highlight word', mob_pdfhl:'Highlight in PDF',
+    mob_scroll:'Auto-scroll', mob_cont:'Continuous reading', mob_punct:'Skip punctuation',
+    mob_fontsize:'Font size', mob_theme:'Theme', mob_theme_btn:'Light/Dark',
+    mob_zoom:'PDF Zoom', mob_focus:'Focus Mode', mob_kara:'Karaoke', mob_search:'Search',
+    mob_bm:'Bookmark', mob_export:'Export', mob_copy:'Copy',
+    mob_lib_title:'📂 Files', mob_lib_empty:'No documents loaded', mob_lib_add:'Add PDFs',
+    status_ready:'Ready', status_paused:'Paused', status_stopped:'Stopped', status_done:'Done',
     cfg_voice:'Voice & Narration', cfg_country:'Your country / language', cfg_country_sub:'Filters available system voices',
     cfg_voicesel:'Selected voice', cfg_appearance:'Appearance', cfg_theme:'Theme',
     cfg_fontsize:'Font size', cfg_spacing:'Line spacing', cfg_hlcolor:'Highlight color',
@@ -1808,15 +2156,23 @@ const I18N = {
     cfg_punct:'Skip punctuation', cfg_guided:'Guided reading (sentences)', cfg_guided_sub:'Reads sentence by sentence',
     cfg_sleep:'Sleep timer', cfg_shortcuts:'Keyboard Shortcuts', cfg_about:'About',
     cfg_about_text:'PDF reader with Text-to-Speech, multiple documents, persistent session and RSVP focus mode.',
-    kd:{play:'Play / Pause narration',page:'Previous / next page',stop:'Stop narration',
-      thumb:'Toggle page thumbnails',kara:'Toggle Karaoke',side:'Show / hide panel',
-      rsvp:'RSVP focus mode',full:'Fullscreen',theme:'Toggle light/dark theme',
-      bm:'Bookmark current page',search:'Search text',zoom:'PDF Zoom',zoomreset:'Reset zoom',doc:'Next document'},
+    kd:{ play:'Play / Pause narration', page:'Previous / next page', stop:'Stop narration',
+      thumb:'Toggle page thumbnails', kara:'Toggle Karaoke', side:'Show / hide panel',
+      rsvp:'RSVP focus mode', full:'Fullscreen', theme:'Toggle light/dark theme',
+      bm:'Bookmark current page', search:'Search text', zoom:'PDF Zoom',
+      zoomreset:'Reset zoom', doc:'Next document' },
     sleep_off:'Off',
+    app_subtitle:'Smart Reader', add_pdfs:'Add PDFs', tabs_empty:'No PDF open',
+    reading:'Reading', toast_no_pdf:'Open a PDF first.', toast_no_text:'No text on this page.',
   },
-  'en-GB': { placeholder:'Select a country above…', hint_none:'Select your country to load voices.',
+  /* ── English GB ───────────────────────────────────── */
+  'en-GB': {
+    placeholder:'Select a country above…', hint_none:'Select your country to load voices.',
     hint_ok:(n,lbl)=>`${n} voice${n>1?'s':''} found for ${lbl}.`,
     hint_miss:(lbl)=>`No voices found for ${lbl}. Please install voices in your system settings.`,
+    tab_reading:'Reading', tab_docs:'Docs', tab_fav:'Bookmarks', tab_cfg:'Settings',
+    view_single:'Single', view_all:'All', view_text:'Text', view_kara:'Karaoke',
+    view_rsvp:'Focus', view_guided:'Guided',
     audio:'⚙️ Audio Settings', speed:'Speed', pitch:'Pitch', volume:'Volume',
     stats:'📊 Statistics', words:'words', read:'read', left:'remaining',
     page_btn:'Page', all_btn:'All', copy_btn:'Copy',
@@ -1824,6 +2180,22 @@ const I18N = {
     library:'📂 Library', lib_empty:'No documents loaded',
     bookmarks:'🔖 Bookmarks', bm_empty:'No bookmarks yet', bm_hint:'Press M to bookmark current page',
     page:'Page', current_word:'current word', open_pdf:'Open a PDF to\nstart reading',
+    upload_title:'Open your PDFs', upload_sub:'Drag and drop one or more files',
+    upload_or:'or', upload_browse:'Browse files', upload_fmts:'Multiple PDFs · auto-save session',
+    kara_title:'Reading karaoke', kara_hint:'Start reading to see the karaoke…',
+    search_ph:'Search in text…',
+    rsvp_guide:'FOCUS MODE — ONE WORD AT A TIME', rsvp_start:'▶ Start', rsvp_pause:'⏸ Pause',
+    ctx_read:'Read from here', ctx_copy:'Copy word', ctx_dict:'Look up in dictionary',
+    ctx_search:'Search in text', ctx_bm:'Bookmark page',
+    mob_voice:'🎙 Voice & Audio', mob_page:'📄 Page', mob_opts:'⚙️ Options',
+    mob_appear:'🎨 Appearance', mob_stats:'📊 Statistics', mob_tools:'🛠 Tools',
+    mob_goto:'Go to page', mob_hl:'Highlight word', mob_pdfhl:'Highlight in PDF',
+    mob_scroll:'Auto-scroll', mob_cont:'Continuous reading', mob_punct:'Skip punctuation',
+    mob_fontsize:'Font size', mob_theme:'Theme', mob_theme_btn:'Light/Dark',
+    mob_zoom:'PDF Zoom', mob_focus:'Focus Mode', mob_kara:'Karaoke', mob_search:'Search',
+    mob_bm:'Bookmark', mob_export:'Export', mob_copy:'Copy',
+    mob_lib_title:'📂 Files', mob_lib_empty:'No documents loaded', mob_lib_add:'Add PDFs',
+    status_ready:'Ready', status_paused:'Paused', status_stopped:'Stopped', status_done:'Done',
     cfg_voice:'Voice & Narration', cfg_country:'Your country / language', cfg_country_sub:'Filters available system voices',
     cfg_voicesel:'Selected voice', cfg_appearance:'Appearance', cfg_theme:'Theme',
     cfg_fontsize:'Font size', cfg_spacing:'Line spacing', cfg_hlcolor:'Highlight colour',
@@ -1832,46 +2204,142 @@ const I18N = {
     cfg_punct:'Skip punctuation', cfg_guided:'Guided reading (sentences)', cfg_guided_sub:'Reads sentence by sentence',
     cfg_sleep:'Sleep timer', cfg_shortcuts:'Keyboard Shortcuts', cfg_about:'About',
     cfg_about_text:'PDF reader with Text-to-Speech, multiple documents, persistent session and RSVP focus mode.',
-    kd:{play:'Play / Pause narration',page:'Previous / next page',stop:'Stop narration',
-      thumb:'Toggle page thumbnails',kara:'Toggle Karaoke',side:'Show / hide panel',
-      rsvp:'RSVP focus mode',full:'Fullscreen',theme:'Toggle light/dark theme',
-      bm:'Bookmark current page',search:'Search text',zoom:'PDF Zoom',zoomreset:'Reset zoom',doc:'Next document'},
+    kd:{ play:'Play / Pause narration', page:'Previous / next page', stop:'Stop narration',
+      thumb:'Toggle page thumbnails', kara:'Toggle Karaoke', side:'Show / hide panel',
+      rsvp:'RSVP focus mode', full:'Fullscreen', theme:'Toggle light/dark theme',
+      bm:'Bookmark current page', search:'Search text', zoom:'PDF Zoom',
+      zoomreset:'Reset zoom', doc:'Next document' },
     sleep_off:'Off',
+    app_subtitle:'Smart Reader', add_pdfs:'Add PDFs', tabs_empty:'No PDF open',
+    reading:'Reading', toast_no_pdf:'Open a PDF first.', toast_no_text:'No text on this page.',
   },
-  'es-ES': { placeholder:'Selecciona un país…', hint_none:'Selecciona tu país para cargar las voces.',
+  /* ── Español España ───────────────────────────────── */
+  'es-ES': {
+    placeholder:'Selecciona un país…', hint_none:'Selecciona tu país para cargar las voces.',
     hint_ok:(n,lbl)=>`${n} voz${n>1?'es':''} encontrada${n>1?'s':''} para ${lbl}.`,
     hint_miss:(lbl)=>`No se encontraron voces para ${lbl}. Instala voces en la configuración del sistema.`,
+    tab_reading:'Lectura', tab_docs:'Docs', tab_fav:'Favoritos', tab_cfg:'Config',
+    view_single:'Una', view_all:'Todas', view_text:'Texto', view_kara:'Karaoke',
+    view_rsvp:'Foco', view_guided:'Guiada',
     audio:'⚙️ Ajustes de Audio', speed:'Velocidad', pitch:'Tono', volume:'Volumen',
     stats:'📊 Estadísticas', words:'palabras', read:'leído', left:'restante',
     page_btn:'Pág.', all_btn:'Todo', copy_btn:'Copiar',
-    notes:'📝 Notas', copy_notes:'Copiar notas', clear_notes:'Limpiar',
-    library:'📂 Biblioteca', lib_empty:'No hay documentos cargados',
+    notes:'📝 Notas', copy_notes:'Copiar notas', clear_notes:'Borrar',
+    library:'📂 Biblioteca', lib_empty:'Ningún documento cargado',
     bookmarks:'🔖 Favoritos', bm_empty:'Sin favoritos aún', bm_hint:'Pulsa M para marcar la página actual',
     page:'Página', current_word:'palabra actual', open_pdf:'Abre un PDF para\nempezar a leer',
-    cfg_voice:'Voz & Narración', cfg_country:'Tu país / idioma', cfg_country_sub:'Filtra las voces del sistema',
+    upload_title:'Abre tus PDFs', upload_sub:'Arrastra y suelta uno o más archivos',
+    upload_or:'o', upload_browse:'Buscar archivos', upload_fmts:'Múltiples PDFs · sesión automática',
+    kara_title:'Seguimiento de lectura', kara_hint:'Inicia la lectura para ver el seguimiento…',
+    search_ph:'Buscar en el texto…',
+    rsvp_guide:'MODO FOCO — UNA PALABRA A LA VEZ', rsvp_start:'▶ Iniciar', rsvp_pause:'⏸ Pausar',
+    ctx_read:'Leer desde aquí', ctx_copy:'Copiar palabra', ctx_dict:'Buscar en diccionario',
+    ctx_search:'Buscar en el texto', ctx_bm:'Marcar página',
+    mob_voice:'🎙 Voz & Audio', mob_page:'📄 Página', mob_opts:'⚙️ Opciones',
+    mob_appear:'🎨 Apariencia', mob_stats:'📊 Estadísticas', mob_tools:'🛠 Herramientas',
+    mob_goto:'Ir a página', mob_hl:'Resaltar palabra', mob_pdfhl:'Resaltar en PDF',
+    mob_scroll:'Auto-scroll', mob_cont:'Lectura continua', mob_punct:'Saltar puntuación',
+    mob_fontsize:'Tamaño de fuente', mob_theme:'Tema', mob_theme_btn:'Claro/Oscuro',
+    mob_zoom:'Zoom PDF', mob_focus:'Modo Foco', mob_kara:'Karaoke', mob_search:'Buscar',
+    mob_bm:'Marcar pág.', mob_export:'Exportar', mob_copy:'Copiar',
+    mob_lib_title:'📂 Archivos', mob_lib_empty:'Ningún documento cargado', mob_lib_add:'Añadir PDFs',
+    status_ready:'Listo', status_paused:'Pausado', status_stopped:'Parado', status_done:'Hecho',
+    cfg_voice:'Voz & Narración', cfg_country:'Tu país / idioma', cfg_country_sub:'Filtra las voces del sistema disponibles',
     cfg_voicesel:'Voz seleccionada', cfg_appearance:'Apariencia', cfg_theme:'Tema',
     cfg_fontsize:'Tamaño de fuente', cfg_spacing:'Interlineado', cfg_hlcolor:'Color de resaltado',
-    cfg_readopts:'Opciones de lectura', cfg_hl:'Resaltar palabra (texto)', cfg_pdfhl:'Resaltar en PDF',
+    cfg_readopts:'Opciones de Lectura', cfg_hl:'Resaltar palabra (texto)', cfg_pdfhl:'Resaltar en PDF',
     cfg_scroll:'Auto-scroll texto', cfg_cont:'Lectura continua', cfg_cont_sub:'Avanza de página al terminar',
-    cfg_punct:'Omitir puntuación', cfg_guided:'Lectura guiada (frases)', cfg_guided_sub:'Lee frase por frase',
+    cfg_punct:'Saltar puntuación', cfg_guided:'Lectura guiada (frases)', cfg_guided_sub:'Lee frase a frase',
     cfg_sleep:'Temporizador de sueño', cfg_shortcuts:'Atajos de Teclado', cfg_about:'Acerca de',
-    cfg_about_text:'Lector PDF con Text-to-Speech, múltiples documentos, sesión persistente y modo foco RSVP.',
-    kd:{play:'Play / Pausar narración',page:'Página anterior / siguiente',stop:'Detener narración',
-      thumb:'Toggle miniaturas',kara:'Toggle Karaoke',side:'Mostrar / ocultar panel',
-      rsvp:'Modo foco RSVP',full:'Pantalla completa',theme:'Cambiar tema',
-      bm:'Marcar página',search:'Buscar en texto',zoom:'Zoom PDF',zoomreset:'Reset zoom',doc:'Siguiente documento'},
+    cfg_about_text:'Lector de PDF con Text-to-Speech, múltiples documentos, sesión persistente y modo foco RSVP.',
+    kd:{ play:'Play / Pausar narración', page:'Página anterior / siguiente', stop:'Parar narración',
+      thumb:'Toggle miniaturas', kara:'Toggle Karaoke', side:'Mostrar / ocultar panel',
+      rsvp:'Modo foco RSVP', full:'Pantalla completa', theme:'Cambiar tema',
+      bm:'Marcar página', search:'Buscar en texto', zoom:'Zoom PDF',
+      zoomreset:'Reset zoom', doc:'Siguiente documento' },
     sleep_off:'Desactivado',
+    app_subtitle:'Lector Inteligente', add_pdfs:'Añadir PDFs', tabs_empty:'Ningún PDF abierto',
+    reading:'Leyendo', toast_no_pdf:'Abre un PDF primero.', toast_no_text:'Sin texto en esta página.',
   },
-  'fr-FR': { placeholder:'Sélectionnez votre pays…', hint_none:'Sélectionnez votre pays pour charger les voix.',
+  /* ── Español México ───────────────────────────────── */
+  'es-MX': {
+    placeholder:'Selecciona un país…', hint_none:'Selecciona tu país para cargar las voces.',
+    hint_ok:(n,lbl)=>`${n} voz${n>1?'es':''} encontrada${n>1?'s':''} para ${lbl}.`,
+    hint_miss:(lbl)=>`No se encontraron voces para ${lbl}. Instala voces en la configuración del sistema.`,
+    tab_reading:'Lectura', tab_docs:'Docs', tab_fav:'Favoritos', tab_cfg:'Config',
+    view_single:'Una', view_all:'Todas', view_text:'Texto', view_kara:'Karaoke',
+    view_rsvp:'Foco', view_guided:'Guiada',
+    audio:'⚙️ Ajustes de Audio', speed:'Velocidad', pitch:'Tono', volume:'Volumen',
+    stats:'📊 Estadísticas', words:'palabras', read:'leído', left:'restante',
+    page_btn:'Pág.', all_btn:'Todo', copy_btn:'Copiar',
+    notes:'📝 Notas', copy_notes:'Copiar notas', clear_notes:'Borrar',
+    library:'📂 Biblioteca', lib_empty:'Ningún documento cargado',
+    bookmarks:'🔖 Favoritos', bm_empty:'Sin favoritos aún', bm_hint:'Presiona M para marcar la página actual',
+    page:'Página', current_word:'palabra actual', open_pdf:'Abre un PDF para\nempezar a leer',
+    upload_title:'Abre tus PDFs', upload_sub:'Arrastra y suelta uno o más archivos',
+    upload_or:'o', upload_browse:'Buscar archivos', upload_fmts:'Múltiples PDFs · sesión automática',
+    kara_title:'Seguimiento de lectura', kara_hint:'Inicia la lectura para ver el seguimiento…',
+    search_ph:'Buscar en el texto…',
+    rsvp_guide:'MODO FOCO — UNA PALABRA A LA VEZ', rsvp_start:'▶ Iniciar', rsvp_pause:'⏸ Pausar',
+    ctx_read:'Leer desde aquí', ctx_copy:'Copiar palabra', ctx_dict:'Buscar en diccionario',
+    ctx_search:'Buscar en el texto', ctx_bm:'Marcar página',
+    mob_voice:'🎙 Voz & Audio', mob_page:'📄 Página', mob_opts:'⚙️ Opciones',
+    mob_appear:'🎨 Apariencia', mob_stats:'📊 Estadísticas', mob_tools:'🛠 Herramientas',
+    mob_goto:'Ir a página', mob_hl:'Resaltar palabra', mob_pdfhl:'Resaltar en PDF',
+    mob_scroll:'Auto-scroll', mob_cont:'Lectura continua', mob_punct:'Saltar puntuación',
+    mob_fontsize:'Tamaño de fuente', mob_theme:'Tema', mob_theme_btn:'Claro/Oscuro',
+    mob_zoom:'Zoom PDF', mob_focus:'Modo Foco', mob_kara:'Karaoke', mob_search:'Buscar',
+    mob_bm:'Marcar pág.', mob_export:'Exportar', mob_copy:'Copiar',
+    mob_lib_title:'📂 Archivos', mob_lib_empty:'Ningún documento cargado', mob_lib_add:'Agregar PDFs',
+    status_ready:'Listo', status_paused:'Pausado', status_stopped:'Detenido', status_done:'Terminado',
+    cfg_voice:'Voz & Narración', cfg_country:'Tu país / idioma', cfg_country_sub:'Filtra las voces disponibles del sistema',
+    cfg_voicesel:'Voz seleccionada', cfg_appearance:'Apariencia', cfg_theme:'Tema',
+    cfg_fontsize:'Tamaño de fuente', cfg_spacing:'Interlineado', cfg_hlcolor:'Color de resaltado',
+    cfg_readopts:'Opciones de Lectura', cfg_hl:'Resaltar palabra (texto)', cfg_pdfhl:'Resaltar en PDF',
+    cfg_scroll:'Auto-scroll texto', cfg_cont:'Lectura continua', cfg_cont_sub:'Avanza de página al terminar',
+    cfg_punct:'Saltar puntuación', cfg_guided:'Lectura guiada (frases)', cfg_guided_sub:'Lee frase por frase',
+    cfg_sleep:'Temporizador de sueño', cfg_shortcuts:'Atajos de Teclado', cfg_about:'Acerca de',
+    cfg_about_text:'Lector de PDF con Text-to-Speech, múltiples documentos, sesión persistente y modo foco RSVP.',
+    kd:{ play:'Play / Pausar narración', page:'Página anterior / siguiente', stop:'Detener narración',
+      thumb:'Toggle miniaturas', kara:'Toggle Karaoke', side:'Mostrar / ocultar panel',
+      rsvp:'Modo foco RSVP', full:'Pantalla completa', theme:'Cambiar tema',
+      bm:'Marcar página', search:'Buscar en texto', zoom:'Zoom PDF',
+      zoomreset:'Reset zoom', doc:'Siguiente documento' },
+    sleep_off:'Desactivado',
+    app_subtitle:'Lector Inteligente', add_pdfs:'Agregar PDFs', tabs_empty:'Ningún PDF abierto',
+    reading:'Leyendo', toast_no_pdf:'Abre un PDF primero.', toast_no_text:'Sin texto en esta página.',
+  },
+  /* ── Français ─────────────────────────────────────── */
+  'fr-FR': {
+    placeholder:'Sélectionnez votre pays…', hint_none:'Sélectionnez votre pays pour charger les voix.',
     hint_ok:(n,lbl)=>`${n} voix trouvée${n>1?'s':''} pour ${lbl}.`,
     hint_miss:(lbl)=>`Aucune voix trouvée pour ${lbl}. Installez des voix dans les paramètres système.`,
+    tab_reading:'Lecture', tab_docs:'Docs', tab_fav:'Favoris', tab_cfg:'Config',
+    view_single:'Une', view_all:'Toutes', view_text:'Texte', view_kara:'Karaoké',
+    view_rsvp:'Focus', view_guided:'Guidée',
     audio:'⚙️ Paramètres Audio', speed:'Vitesse', pitch:'Ton', volume:'Volume',
     stats:'📊 Statistiques', words:'mots', read:'lu', left:'restant',
     page_btn:'Page', all_btn:'Tout', copy_btn:'Copier',
     notes:'📝 Notes', copy_notes:'Copier les notes', clear_notes:'Effacer',
     library:'📂 Bibliothèque', lib_empty:'Aucun document chargé',
-    bookmarks:'🔖 Favoris', bm_empty:'Aucun favori pour l\'instant', bm_hint:'Appuyez sur M pour marquer la page',
+    bookmarks:'🔖 Favoris', bm_empty:"Aucun favori pour l'instant", bm_hint:'Appuyez sur M pour marquer la page',
     page:'Page', current_word:'mot actuel', open_pdf:'Ouvrez un PDF pour\ncommencer la lecture',
+    upload_title:'Ouvrez vos PDFs', upload_sub:'Glissez-déposez un ou plusieurs fichiers',
+    upload_or:'ou', upload_browse:'Parcourir les fichiers', upload_fmts:'Plusieurs PDFs · session automatique',
+    kara_title:'Lecture karaoké', kara_hint:'Démarrez la lecture pour voir le karaoké…',
+    search_ph:'Rechercher dans le texte…',
+    rsvp_guide:'MODE FOCUS — UN MOT À LA FOIS', rsvp_start:'▶ Démarrer', rsvp_pause:'⏸ Pause',
+    ctx_read:"Lire à partir d'ici", ctx_copy:'Copier le mot', ctx_dict:'Chercher dans le dictionnaire',
+    ctx_search:'Rechercher dans le texte', ctx_bm:'Marquer la page',
+    mob_voice:'🎙 Voix & Audio', mob_page:'📄 Page', mob_opts:'⚙️ Options',
+    mob_appear:'🎨 Apparence', mob_stats:'📊 Statistiques', mob_tools:'🛠 Outils',
+    mob_goto:'Aller à la page', mob_hl:'Surligner le mot', mob_pdfhl:'Surligner dans le PDF',
+    mob_scroll:'Défilement auto', mob_cont:'Lecture continue', mob_punct:'Ignorer ponctuation',
+    mob_fontsize:'Taille de police', mob_theme:'Thème', mob_theme_btn:'Clair/Sombre',
+    mob_zoom:'Zoom PDF', mob_focus:'Mode Focus', mob_kara:'Karaoké', mob_search:'Rechercher',
+    mob_bm:'Marquer page', mob_export:'Exporter', mob_copy:'Copier',
+    mob_lib_title:'📂 Fichiers', mob_lib_empty:'Aucun document chargé', mob_lib_add:'Ajouter des PDFs',
+    status_ready:'Prêt', status_paused:'En pause', status_stopped:'Arrêté', status_done:'Terminé',
     cfg_voice:'Voix & Narration', cfg_country:'Votre pays / langue', cfg_country_sub:'Filtre les voix système disponibles',
     cfg_voicesel:'Voix sélectionnée', cfg_appearance:'Apparence', cfg_theme:'Thème',
     cfg_fontsize:'Taille de police', cfg_spacing:'Interligne', cfg_hlcolor:'Couleur de surbrillance',
@@ -1880,22 +2348,46 @@ const I18N = {
     cfg_punct:'Ignorer ponctuation', cfg_guided:'Lecture guidée (phrases)', cfg_guided_sub:'Lit phrase par phrase',
     cfg_sleep:'Minuterie', cfg_shortcuts:'Raccourcis Clavier', cfg_about:'À propos',
     cfg_about_text:'Lecteur PDF avec Text-to-Speech, multi-documents, session persistante et mode focus RSVP.',
-    kd:{play:'Play / Pause narration',page:'Page préc. / suivante',stop:'Arrêter narration',
-      thumb:'Toggle vignettes',kara:'Toggle Karaoké',side:'Afficher / masquer panneau',
-      rsvp:'Mode focus RSVP',full:'Plein écran',theme:'Changer thème',
-      bm:'Marquer page',search:'Chercher dans le texte',zoom:'Zoom PDF',zoomreset:'Réinitialiser zoom',doc:'Document suivant'},
+    kd:{ play:'Play / Pause narration', page:'Page préc. / suivante', stop:'Arrêter narration',
+      thumb:'Toggle vignettes', kara:'Toggle Karaoké', side:'Afficher / masquer panneau',
+      rsvp:'Mode focus RSVP', full:'Plein écran', theme:'Changer thème',
+      bm:'Marquer page', search:'Chercher dans le texte', zoom:'Zoom PDF',
+      zoomreset:'Réinitialiser zoom', doc:'Document suivant' },
     sleep_off:'Désactivé',
+    app_subtitle:'Lecteur Intelligent', add_pdfs:'Ajouter des PDFs', tabs_empty:'Aucun PDF ouvert',
+    reading:'Lecture', toast_no_pdf:"Ouvrez d'abord un PDF.", toast_no_text:'Aucun texte sur cette page.',
   },
-  'de-DE': { placeholder:'Land auswählen…', hint_none:'Wählen Sie Ihr Land, um Stimmen zu laden.',
+  /* ── Deutsch ──────────────────────────────────────── */
+  'de-DE': {
+    placeholder:'Land auswählen…', hint_none:'Wählen Sie Ihr Land, um Stimmen zu laden.',
     hint_ok:(n,lbl)=>`${n} Stimme${n>1?'n':''} gefunden für ${lbl}.`,
     hint_miss:(lbl)=>`Keine Stimmen für ${lbl} gefunden. Installieren Sie Stimmen in den Systemeinstellungen.`,
+    tab_reading:'Lesen', tab_docs:'Docs', tab_fav:'Lesezeichen', tab_cfg:'Einstellungen',
+    view_single:'Eine', view_all:'Alle', view_text:'Text', view_kara:'Karaoke',
+    view_rsvp:'Fokus', view_guided:'Geführt',
     audio:'⚙️ Audioeinstellungen', speed:'Geschwindigkeit', pitch:'Tonhöhe', volume:'Lautstärke',
     stats:'📊 Statistiken', words:'Wörter', read:'gelesen', left:'verbleibend',
     page_btn:'S.', all_btn:'Alles', copy_btn:'Kopieren',
     notes:'📝 Notizen', copy_notes:'Notizen kopieren', clear_notes:'Löschen',
     library:'📂 Bibliothek', lib_empty:'Keine Dokumente geladen',
-    bookmarks:'🔖 Lesezeichen', bm_empty:'Noch keine Lesezeichen', bm_hint:'Drücken Sie M um die aktuelle Seite zu markieren',
+    bookmarks:'🔖 Lesezeichen', bm_empty:'Noch keine Lesezeichen', bm_hint:'Drücken Sie M um die Seite zu markieren',
     page:'Seite', current_word:'aktuelles Wort', open_pdf:'PDF öffnen um\nzu beginnen',
+    upload_title:'PDFs öffnen', upload_sub:'Dateien hierher ziehen und ablegen',
+    upload_or:'oder', upload_browse:'Dateien suchen', upload_fmts:'Mehrere PDFs · automatische Sitzung',
+    kara_title:'Lese-Karaoke', kara_hint:'Lesen starten, um das Karaoke zu sehen…',
+    search_ph:'Im Text suchen…',
+    rsvp_guide:'FOKUSMODUS — EIN WORT NACH DEM ANDEREN', rsvp_start:'▶ Starten', rsvp_pause:'⏸ Pause',
+    ctx_read:'Ab hier lesen', ctx_copy:'Wort kopieren', ctx_dict:'Im Wörterbuch suchen',
+    ctx_search:'Im Text suchen', ctx_bm:'Seite markieren',
+    mob_voice:'🎙 Stimme & Audio', mob_page:'📄 Seite', mob_opts:'⚙️ Optionen',
+    mob_appear:'🎨 Erscheinungsbild', mob_stats:'📊 Statistiken', mob_tools:'🛠 Werkzeuge',
+    mob_goto:'Zur Seite gehen', mob_hl:'Wort hervorheben', mob_pdfhl:'Im PDF hervorheben',
+    mob_scroll:'Autoscroll', mob_cont:'Kontinuierliches Lesen', mob_punct:'Satzzeichen überspringen',
+    mob_fontsize:'Schriftgröße', mob_theme:'Thema', mob_theme_btn:'Hell/Dunkel',
+    mob_zoom:'PDF Zoom', mob_focus:'Fokusmodus', mob_kara:'Karaoke', mob_search:'Suchen',
+    mob_bm:'Seite markieren', mob_export:'Exportieren', mob_copy:'Kopieren',
+    mob_lib_title:'📂 Dateien', mob_lib_empty:'Keine Dokumente geladen', mob_lib_add:'PDFs hinzufügen',
+    status_ready:'Bereit', status_paused:'Pausiert', status_stopped:'Gestoppt', status_done:'Fertig',
     cfg_voice:'Stimme & Narration', cfg_country:'Ihr Land / Sprache', cfg_country_sub:'Filtert verfügbare Systemstimmen',
     cfg_voicesel:'Ausgewählte Stimme', cfg_appearance:'Erscheinungsbild', cfg_theme:'Thema',
     cfg_fontsize:'Schriftgröße', cfg_spacing:'Zeilenabstand', cfg_hlcolor:'Hervorhebungsfarbe',
@@ -1904,22 +2396,46 @@ const I18N = {
     cfg_punct:'Satzzeichen überspringen', cfg_guided:'Geführtes Lesen (Sätze)', cfg_guided_sub:'Liest satzweise',
     cfg_sleep:'Schlaf-Timer', cfg_shortcuts:'Tastenkürzel', cfg_about:'Über',
     cfg_about_text:'PDF-Leseprogramm mit Text-to-Speech, Multi-Dokument, persistenter Sitzung und RSVP-Fokusmodus.',
-    kd:{play:'Play / Pause Narration',page:'Vorherige / nächste Seite',stop:'Narration stoppen',
-      thumb:'Seitenvorschau umschalten',kara:'Karaoke umschalten',side:'Panel ein/ausblenden',
-      rsvp:'RSVP-Fokusmodus',full:'Vollbild',theme:'Theme wechseln',
-      bm:'Seite markieren',search:'Im Text suchen',zoom:'PDF Zoom',zoomreset:'Zoom zurücksetzen',doc:'Nächstes Dokument'},
+    kd:{ play:'Play / Pause Narration', page:'Vorherige / nächste Seite', stop:'Narration stoppen',
+      thumb:'Seitenvorschau umschalten', kara:'Karaoke umschalten', side:'Panel ein/ausblenden',
+      rsvp:'RSVP-Fokusmodus', full:'Vollbild', theme:'Theme wechseln',
+      bm:'Seite markieren', search:'Im Text suchen', zoom:'PDF Zoom',
+      zoomreset:'Zoom zurücksetzen', doc:'Nächstes Dokument' },
     sleep_off:'Aus',
+    app_subtitle:'Intelligenter Leser', add_pdfs:'PDFs hinzufügen', tabs_empty:'Kein PDF geöffnet',
+    reading:'Lesen', toast_no_pdf:'Öffnen Sie zuerst ein PDF.', toast_no_text:'Kein Text auf dieser Seite.',
   },
-  'it-IT': { placeholder:'Seleziona il tuo paese…', hint_none:'Seleziona il tuo paese per caricare le voci.',
-    hint_ok:(n,lbl)=>`${n} voce${n>1?'i':''} trovata${n>1?'e':''} per ${lbl}.`,
+  /* ── Italiano ─────────────────────────────────────── */
+  'it-IT': {
+    placeholder:'Seleziona il tuo paese…', hint_none:'Seleziona il tuo paese per caricare le voci.',
+    hint_ok:(n,lbl)=>`${n} voce${n>1?'i':''} trovata per ${lbl}.`,
     hint_miss:(lbl)=>`Nessuna voce trovata per ${lbl}. Installa voci nelle impostazioni di sistema.`,
+    tab_reading:'Lettura', tab_docs:'Docs', tab_fav:'Segnalibri', tab_cfg:'Impostazioni',
+    view_single:'Una', view_all:'Tutte', view_text:'Testo', view_kara:'Karaoke',
+    view_rsvp:'Focus', view_guided:'Guidata',
     audio:'⚙️ Impostazioni Audio', speed:'Velocità', pitch:'Tono', volume:'Volume',
     stats:'📊 Statistiche', words:'parole', read:'letto', left:'rimanente',
     page_btn:'Pag.', all_btn:'Tutto', copy_btn:'Copia',
     notes:'📝 Note', copy_notes:'Copia note', clear_notes:'Cancella',
     library:'📂 Biblioteca', lib_empty:'Nessun documento caricato',
     bookmarks:'🔖 Segnalibri', bm_empty:'Nessun segnalibro ancora', bm_hint:'Premi M per aggiungere un segnalibro',
-    page:'Pagina', current_word:'parola corrente', open_pdf:'Apri un PDF per\niniciar la lettura',
+    page:'Pagina', current_word:'parola corrente', open_pdf:'Apri un PDF per\niniziare la lettura',
+    upload_title:'Apri i tuoi PDF', upload_sub:'Trascina e rilascia uno o più file',
+    upload_or:'o', upload_browse:'Sfoglia file', upload_fmts:'Più PDF · sessione automatica',
+    kara_title:'Karaoke di lettura', kara_hint:'Inizia la lettura per vedere il karaoke…',
+    search_ph:'Cerca nel testo…',
+    rsvp_guide:'MODALITÀ FOCUS — UNA PAROLA ALLA VOLTA', rsvp_start:'▶ Inizia', rsvp_pause:'⏸ Pausa',
+    ctx_read:'Leggi da qui', ctx_copy:'Copia parola', ctx_dict:'Cerca nel dizionario',
+    ctx_search:'Cerca nel testo', ctx_bm:'Aggiungi segnalibro',
+    mob_voice:'🎙 Voce & Audio', mob_page:'📄 Pagina', mob_opts:'⚙️ Opzioni',
+    mob_appear:'🎨 Aspetto', mob_stats:'📊 Statistiche', mob_tools:'🛠 Strumenti',
+    mob_goto:'Vai alla pagina', mob_hl:'Evidenziare parola', mob_pdfhl:'Evidenziare nel PDF',
+    mob_scroll:'Auto-scroll', mob_cont:'Lettura continua', mob_punct:'Salta punteggiatura',
+    mob_fontsize:'Dimensione font', mob_theme:'Tema', mob_theme_btn:'Chiaro/Scuro',
+    mob_zoom:'Zoom PDF', mob_focus:'Modalità Focus', mob_kara:'Karaoke', mob_search:'Cerca',
+    mob_bm:'Segnalibro', mob_export:'Esporta', mob_copy:'Copia',
+    mob_lib_title:'📂 File', mob_lib_empty:'Nessun documento caricato', mob_lib_add:'Aggiungi PDF',
+    status_ready:'Pronto', status_paused:'In pausa', status_stopped:'Fermato', status_done:'Completato',
     cfg_voice:'Voce & Narrazione', cfg_country:'Paese / lingua', cfg_country_sub:'Filtra le voci di sistema',
     cfg_voicesel:'Voce selezionata', cfg_appearance:'Aspetto', cfg_theme:'Tema',
     cfg_fontsize:'Dimensione font', cfg_spacing:'Interlinea', cfg_hlcolor:'Colore evidenziazione',
@@ -1928,11 +2444,447 @@ const I18N = {
     cfg_punct:'Salta punteggiatura', cfg_guided:'Lettura guidata (frasi)', cfg_guided_sub:'Legge frase per frase',
     cfg_sleep:'Timer sonno', cfg_shortcuts:'Scorciatoie Tastiera', cfg_about:'Informazioni',
     cfg_about_text:'Lettore PDF con Text-to-Speech, multi-documento, sessione persistente e modalità focus RSVP.',
-    kd:{play:'Play / Pausa narrazione',page:'Pagina prec. / succ.',stop:'Ferma narrazione',
-      thumb:'Toggle miniature',kara:'Toggle Karaoke',side:'Mostra / nascondi pannello',
-      rsvp:'Modalità focus RSVP',full:'Schermo intero',theme:'Cambia tema',
-      bm:'Aggiungi segnalibro',search:'Cerca nel testo',zoom:'Zoom PDF',zoomreset:'Ripristina zoom',doc:'Documento successivo'},
+    kd:{ play:'Play / Pausa narrazione', page:'Pagina prec. / succ.', stop:'Ferma narrazione',
+      thumb:'Toggle miniature', kara:'Toggle Karaoke', side:'Mostra / nascondi pannello',
+      rsvp:'Modalità focus RSVP', full:'Schermo intero', theme:'Cambia tema',
+      bm:'Aggiungi segnalibro', search:'Cerca nel testo', zoom:'Zoom PDF',
+      zoomreset:'Ripristina zoom', doc:'Documento successivo' },
     sleep_off:'Disattivato',
+    app_subtitle:'Lettore Intelligente', add_pdfs:'Aggiungi PDF', tabs_empty:'Nessun PDF aperto',
+    reading:'Lettura', toast_no_pdf:'Apri prima un PDF.', toast_no_text:'Nessun testo in questa pagina.',
+  },
+  /* ── Nederlands ───────────────────────────────────── */
+  'nl-NL': {
+    placeholder:'Selecteer een land…', hint_none:'Selecteer uw land om stemmen te laden.',
+    hint_ok:(n,lbl)=>`${n} stem${n>1?'men':''} gevonden voor ${lbl}.`,
+    hint_miss:(lbl)=>`Geen stemmen gevonden voor ${lbl}. Installeer stemmen in uw systeeminstellingen.`,
+    tab_reading:'Lezen', tab_docs:'Docs', tab_fav:'Bladwijzers', tab_cfg:'Instellingen',
+    view_single:'Één', view_all:'Alle', view_text:'Tekst', view_kara:'Karaoke',
+    view_rsvp:'Focus', view_guided:'Begeleid',
+    audio:'⚙️ Audio-instellingen', speed:'Snelheid', pitch:'Toonhoogte', volume:'Volume',
+    stats:'📊 Statistieken', words:'woorden', read:'gelezen', left:'resterend',
+    page_btn:'Pag.', all_btn:'Alles', copy_btn:'Kopiëren',
+    notes:'📝 Notities', copy_notes:'Notities kopiëren', clear_notes:'Wissen',
+    library:'📂 Bibliotheek', lib_empty:'Geen documenten geladen',
+    bookmarks:'🔖 Bladwijzers', bm_empty:'Nog geen bladwijzers', bm_hint:'Druk op M om de huidige pagina te markeren',
+    page:'Pagina', current_word:'huidig woord', open_pdf:'Open een PDF om\nte beginnen met lezen',
+    upload_title:'Open uw PDFs', upload_sub:'Sleep een of meer bestanden hierheen',
+    upload_or:'of', upload_browse:'Bestanden zoeken', upload_fmts:'Meerdere PDFs · automatische sessie',
+    kara_title:'Lees-karaoke', kara_hint:'Start het lezen om de karaoke te zien…',
+    search_ph:'Zoeken in tekst…',
+    rsvp_guide:'FOCUSMODUS — ÉÉN WOORD TEGELIJK', rsvp_start:'▶ Starten', rsvp_pause:'⏸ Pauze',
+    ctx_read:'Lees vanaf hier', ctx_copy:'Woord kopiëren', ctx_dict:'Opzoeken in woordenboek',
+    ctx_search:'Zoeken in tekst', ctx_bm:'Pagina markeren',
+    mob_voice:'🎙 Stem & Audio', mob_page:'📄 Pagina', mob_opts:'⚙️ Opties',
+    mob_appear:'🎨 Uiterlijk', mob_stats:'📊 Statistieken', mob_tools:'🛠 Hulpmiddelen',
+    mob_goto:'Ga naar pagina', mob_hl:'Woord markeren', mob_pdfhl:'Markeren in PDF',
+    mob_scroll:'Automatisch scrollen', mob_cont:'Doorlopend lezen', mob_punct:'Leestekens overslaan',
+    mob_fontsize:'Lettergrootte', mob_theme:'Thema', mob_theme_btn:'Licht/Donker',
+    mob_zoom:'PDF Zoom', mob_focus:'Focusmodus', mob_kara:'Karaoke', mob_search:'Zoeken',
+    mob_bm:'Markeer pag.', mob_export:'Exporteren', mob_copy:'Kopiëren',
+    mob_lib_title:'📂 Bestanden', mob_lib_empty:'Geen documenten geladen', mob_lib_add:'PDFs toevoegen',
+    status_ready:'Gereed', status_paused:'Gepauzeerd', status_stopped:'Gestopt', status_done:'Klaar',
+    cfg_voice:'Stem & Vertelling', cfg_country:'Uw land / taal', cfg_country_sub:'Filtert beschikbare systeemstems',
+    cfg_voicesel:'Geselecteerde stem', cfg_appearance:'Uiterlijk', cfg_theme:'Thema',
+    cfg_fontsize:'Lettergrootte', cfg_spacing:'Regelafstand', cfg_hlcolor:'Markeringskleur',
+    cfg_readopts:'Leesopties', cfg_hl:'Woord markeren (tekst)', cfg_pdfhl:'Markeren in PDF',
+    cfg_scroll:'Automatisch scrollen', cfg_cont:'Doorlopend lezen', cfg_cont_sub:'Gaat naar volgende pagina',
+    cfg_punct:'Leestekens overslaan', cfg_guided:'Begeleid lezen (zinnen)', cfg_guided_sub:'Leest zin voor zin',
+    cfg_sleep:'Slaaptimer', cfg_shortcuts:'Sneltoetsen', cfg_about:'Over',
+    cfg_about_text:'PDF-lezer met Text-to-Speech, meerdere documenten, persistente sessie en RSVP-focusmodus.',
+    kd:{ play:'Play / Pauzeer vertelling', page:'Vorige / volgende pagina', stop:'Stop vertelling',
+      thumb:'Toggle paginaminiaturen', kara:'Toggle Karaoke', side:'Paneel tonen/verbergen',
+      rsvp:'RSVP-focusmodus', full:'Volledig scherm', theme:'Thema wisselen',
+      bm:'Pagina markeren', search:'Zoeken in tekst', zoom:'PDF Zoom',
+      zoomreset:'Zoom herstellen', doc:'Volgend document' },
+    sleep_off:'Uit',
+    app_subtitle:'Slimme Lezer', add_pdfs:'PDFs toevoegen', tabs_empty:'Geen PDF geopend',
+    reading:'Lezen', toast_no_pdf:'Open eerst een PDF.', toast_no_text:'Geen tekst op deze pagina.',
+  },
+  /* ── Polski ───────────────────────────────────────── */
+  'pl-PL': {
+    placeholder:'Wybierz kraj…', hint_none:'Wybierz swój kraj, aby załadować głosy.',
+    hint_ok:(n,lbl)=>`Znaleziono ${n} głos${n>1?'ów':''} dla ${lbl}.`,
+    hint_miss:(lbl)=>`Nie znaleziono głosów dla ${lbl}. Zainstaluj głosy w ustawieniach systemowych.`,
+    tab_reading:'Czytanie', tab_docs:'Docs', tab_fav:'Zakładki', tab_cfg:'Ustawienia',
+    view_single:'Jedna', view_all:'Wszystkie', view_text:'Tekst', view_kara:'Karaoke',
+    view_rsvp:'Fokus', view_guided:'Prowadzone',
+    audio:'⚙️ Ustawienia audio', speed:'Prędkość', pitch:'Tonacja', volume:'Głośność',
+    stats:'📊 Statystyki', words:'słowa', read:'przeczytane', left:'pozostało',
+    page_btn:'Str.', all_btn:'Wszystko', copy_btn:'Kopiuj',
+    notes:'📝 Notatki', copy_notes:'Kopiuj notatki', clear_notes:'Wyczyść',
+    library:'📂 Biblioteka', lib_empty:'Brak załadowanych dokumentów',
+    bookmarks:'🔖 Zakładki', bm_empty:'Brak zakładek', bm_hint:'Naciśnij M, aby dodać zakładkę',
+    page:'Strona', current_word:'bieżące słowo', open_pdf:'Otwórz PDF, aby\nrozpocząć czytanie',
+    upload_title:'Otwórz swoje PDFy', upload_sub:'Przeciągnij i upuść jeden lub więcej plików',
+    upload_or:'lub', upload_browse:'Przeglądaj pliki', upload_fmts:'Wiele PDFów · automatyczna sesja',
+    kara_title:'Karaoke czytania', kara_hint:'Zacznij czytanie, aby zobaczyć karaoke…',
+    search_ph:'Szukaj w tekście…',
+    rsvp_guide:'TRYB SKUPIENIA — JEDNO SŁOWO NA RAZ', rsvp_start:'▶ Rozpocznij', rsvp_pause:'⏸ Pauza',
+    ctx_read:'Czytaj od tutaj', ctx_copy:'Kopiuj słowo', ctx_dict:'Szukaj w słowniku',
+    ctx_search:'Szukaj w tekście', ctx_bm:'Dodaj zakładkę',
+    mob_voice:'🎙 Głos & Audio', mob_page:'📄 Strona', mob_opts:'⚙️ Opcje',
+    mob_appear:'🎨 Wygląd', mob_stats:'📊 Statystyki', mob_tools:'🛠 Narzędzia',
+    mob_goto:'Przejdź do strony', mob_hl:'Podświetl słowo', mob_pdfhl:'Podświetl w PDF',
+    mob_scroll:'Automatyczne przewijanie', mob_cont:'Ciągłe czytanie', mob_punct:'Pomiń interpunkcję',
+    mob_fontsize:'Rozmiar czcionki', mob_theme:'Motyw', mob_theme_btn:'Jasny/Ciemny',
+    mob_zoom:'Zoom PDF', mob_focus:'Tryb skupienia', mob_kara:'Karaoke', mob_search:'Szukaj',
+    mob_bm:'Zakładka', mob_export:'Eksportuj', mob_copy:'Kopiuj',
+    mob_lib_title:'📂 Pliki', mob_lib_empty:'Brak dokumentów', mob_lib_add:'Dodaj PDFy',
+    status_ready:'Gotowy', status_paused:'Wstrzymany', status_stopped:'Zatrzymany', status_done:'Gotowe',
+    cfg_voice:'Głos & Narracja', cfg_country:'Twój kraj / język', cfg_country_sub:'Filtruje dostępne głosy systemowe',
+    cfg_voicesel:'Wybrany głos', cfg_appearance:'Wygląd', cfg_theme:'Motyw',
+    cfg_fontsize:'Rozmiar czcionki', cfg_spacing:'Interlinia', cfg_hlcolor:'Kolor podświetlenia',
+    cfg_readopts:'Opcje czytania', cfg_hl:'Podświetl słowo (tekst)', cfg_pdfhl:'Podświetl w PDF',
+    cfg_scroll:'Automatyczne przewijanie', cfg_cont:'Ciągłe czytanie', cfg_cont_sub:'Przechodzi do następnej strony',
+    cfg_punct:'Pomiń interpunkcję', cfg_guided:'Prowadzone czytanie (zdania)', cfg_guided_sub:'Czyta zdanie po zdaniu',
+    cfg_sleep:'Timer uśpienia', cfg_shortcuts:'Skróty klawiszowe', cfg_about:'O programie',
+    cfg_about_text:'Czytnik PDF z Text-to-Speech, wieloma dokumentami, trwałą sesją i trybem skupienia RSVP.',
+    kd:{ play:'Odtwórz / Wstrzymaj narrację', page:'Poprzednia / następna strona', stop:'Zatrzymaj narrację',
+      thumb:'Przełącz miniatury stron', kara:'Przełącz Karaoke', side:'Pokaż / ukryj panel',
+      rsvp:'Tryb skupienia RSVP', full:'Pełny ekran', theme:'Zmień motyw',
+      bm:'Dodaj zakładkę', search:'Szukaj w tekście', zoom:'Zoom PDF',
+      zoomreset:'Resetuj zoom', doc:'Następny dokument' },
+    sleep_off:'Wyłączony',
+    app_subtitle:'Inteligentny Czytnik', add_pdfs:'Dodaj PDFy', tabs_empty:'Brak otwartego PDF',
+    reading:'Czytam', toast_no_pdf:'Otwórz najpierw PDF.', toast_no_text:'Brak tekstu na tej stronie.',
+  },
+  /* ── Türkçe ───────────────────────────────────────── */
+  'tr-TR': {
+    placeholder:'Bir ülke seçin…', hint_none:'Sesleri yüklemek için ülkenizi seçin.',
+    hint_ok:(n,lbl)=>`${lbl} için ${n} ses bulundu.`,
+    hint_miss:(lbl)=>`${lbl} için ses bulunamadı. Sistem ayarlarından ses yükleyin.`,
+    tab_reading:'Okuma', tab_docs:'Belgeler', tab_fav:'Yer İmleri', tab_cfg:'Ayarlar',
+    view_single:'Tek', view_all:'Tümü', view_text:'Metin', view_kara:'Karaoke',
+    view_rsvp:'Odak', view_guided:'Rehberli',
+    audio:'⚙️ Ses Ayarları', speed:'Hız', pitch:'Perde', volume:'Ses',
+    stats:'📊 İstatistikler', words:'kelime', read:'okundu', left:'kaldı',
+    page_btn:'Sayf.', all_btn:'Tümü', copy_btn:'Kopyala',
+    notes:'📝 Notlar', copy_notes:'Notları kopyala', clear_notes:'Temizle',
+    library:'📂 Kitaplık', lib_empty:'Yüklü belge yok',
+    bookmarks:'🔖 Yer İmleri', bm_empty:'Henüz yer imi yok', bm_hint:"Sayfayı işaretlemek için M'ye basın",
+    page:'Sayfa', current_word:'mevcut kelime', open_pdf:'Okumaya başlamak için\nbir PDF açın',
+    upload_title:"PDF'lerinizi açın", upload_sub:'Bir veya daha fazla dosyayı sürükleyip bırakın',
+    upload_or:'veya', upload_browse:'Dosyalara göz at', upload_fmts:'Birden fazla PDF · otomatik oturum',
+    kara_title:'Okuma karaoke', kara_hint:'Karaokeyi görmek için okumaya başlayın…',
+    search_ph:'Metinde ara…',
+    rsvp_guide:'ODAK MODU — BİR SEFERİNDE BİR KELİME', rsvp_start:'▶ Başla', rsvp_pause:'⏸ Duraklat',
+    ctx_read:'Buradan oku', ctx_copy:'Kelimeyi kopyala', ctx_dict:'Sözlükte ara',
+    ctx_search:'Metinde ara', ctx_bm:'Sayfayı işaretle',
+    mob_voice:'🎙 Ses & Audio', mob_page:'📄 Sayfa', mob_opts:'⚙️ Seçenekler',
+    mob_appear:'🎨 Görünüm', mob_stats:'📊 İstatistikler', mob_tools:'🛠 Araçlar',
+    mob_goto:'Sayfaya git', mob_hl:'Kelimeyi vurgula', mob_pdfhl:"PDF'de vurgula",
+    mob_scroll:'Otomatik kaydır', mob_cont:'Sürekli okuma', mob_punct:'Noktalamayı atla',
+    mob_fontsize:'Yazı tipi boyutu', mob_theme:'Tema', mob_theme_btn:'Açık/Koyu',
+    mob_zoom:'PDF Yakınlaştırma', mob_focus:'Odak Modu', mob_kara:'Karaoke', mob_search:'Ara',
+    mob_bm:'Yer imi', mob_export:'Dışa aktar', mob_copy:'Kopyala',
+    mob_lib_title:'📂 Dosyalar', mob_lib_empty:'Yüklü belge yok', mob_lib_add:'PDF ekle',
+    status_ready:'Hazır', status_paused:'Duraklatıldı', status_stopped:'Durduruldu', status_done:'Tamamlandı',
+    cfg_voice:'Ses & Anlatım', cfg_country:'Ülkeniz / diliniz', cfg_country_sub:'Mevcut sistem seslerini filtreler',
+    cfg_voicesel:'Seçili ses', cfg_appearance:'Görünüm', cfg_theme:'Tema',
+    cfg_fontsize:'Yazı tipi boyutu', cfg_spacing:'Satır aralığı', cfg_hlcolor:'Vurgu rengi',
+    cfg_readopts:'Okuma Seçenekleri', cfg_hl:"Kelimeyi vurgula (metin)", cfg_pdfhl:"PDF'de vurgula",
+    cfg_scroll:'Otomatik kaydır', cfg_cont:'Sürekli okuma', cfg_cont_sub:'Sayfa bitince ilerler',
+    cfg_punct:'Noktalamayı atla', cfg_guided:'Rehberli okuma (cümleler)', cfg_guided_sub:'Cümle cümle okur',
+    cfg_sleep:'Uyku zamanlayıcı', cfg_shortcuts:'Klavye Kısayolları', cfg_about:'Hakkında',
+    cfg_about_text:'Text-to-Speech, birden fazla belge, kalıcı oturum ve RSVP odak moduna sahip PDF okuyucu.',
+    kd:{ play:'Oynat / Duraklat anlatımı', page:'Önceki / sonraki sayfa', stop:'Anlatımı durdur',
+      thumb:'Sayfa küçük resimlerini aç/kapat', kara:"Karaoke'yi aç/kapat", side:'Paneli göster/gizle',
+      rsvp:'RSVP odak modu', full:'Tam ekran', theme:'Temayı değiştir',
+      bm:'Sayfayı işaretle', search:'Metinde ara', zoom:'PDF Yakınlaştırma',
+      zoomreset:'Yakınlaştırmayı sıfırla', doc:'Sonraki belge' },
+    sleep_off:'Kapalı',
+    app_subtitle:'Akıllı Okuyucu', add_pdfs:'PDF ekle', tabs_empty:'Açık PDF yok',
+    reading:'Okunuyor', toast_no_pdf:'Önce bir PDF açın.', toast_no_text:'Bu sayfada metin yok.',
+  },
+  /* ── 日本語 ───────────────────────────────────────── */
+  'ja-JP': {
+    placeholder:'上の国を選択してください…', hint_none:'音声を読み込むには国を選択してください。',
+    hint_ok:(n,lbl)=>`${lbl} で ${n} つの音声が見つかりました。`,
+    hint_miss:(lbl)=>`${lbl} の音声が見つかりません。システム設定で音声をインストールしてください。`,
+    tab_reading:'読書', tab_docs:'文書', tab_fav:'ブックマーク', tab_cfg:'設定',
+    view_single:'1ページ', view_all:'全ページ', view_text:'テキスト', view_kara:'カラオケ',
+    view_rsvp:'フォーカス', view_guided:'ガイド',
+    audio:'⚙️ 音声設定', speed:'スピード', pitch:'ピッチ', volume:'音量',
+    stats:'📊 統計', words:'単語', read:'読了', left:'残り',
+    page_btn:'ページ', all_btn:'全て', copy_btn:'コピー',
+    notes:'📝 メモ', copy_notes:'メモをコピー', clear_notes:'クリア',
+    library:'📂 ライブラリ', lib_empty:'文書がありません',
+    bookmarks:'🔖 ブックマーク', bm_empty:'ブックマークなし', bm_hint:'Mキーで現在のページをブックマーク',
+    page:'ページ', current_word:'現在の単語', open_pdf:'PDFを開いて\n読み始めましょう',
+    upload_title:'PDFを開く', upload_sub:'ファイルをドラッグ＆ドロップ',
+    upload_or:'または', upload_browse:'ファイルを選択', upload_fmts:'複数PDF対応・セッション自動保存',
+    kara_title:'読書カラオケ', kara_hint:'読み始めるとカラオケが表示されます…',
+    search_ph:'テキストを検索…',
+    rsvp_guide:'フォーカスモード — 1回1単語', rsvp_start:'▶ 開始', rsvp_pause:'⏸ 一時停止',
+    ctx_read:'ここから読む', ctx_copy:'単語をコピー', ctx_dict:'辞書で検索',
+    ctx_search:'テキストで検索', ctx_bm:'ページをブックマーク',
+    mob_voice:'🎙 音声・オーディオ', mob_page:'📄 ページ', mob_opts:'⚙️ オプション',
+    mob_appear:'🎨 外観', mob_stats:'📊 統計', mob_tools:'🛠 ツール',
+    mob_goto:'ページへ移動', mob_hl:'単語をハイライト', mob_pdfhl:'PDFでハイライト',
+    mob_scroll:'自動スクロール', mob_cont:'連続読み上げ', mob_punct:'句読点をスキップ',
+    mob_fontsize:'フォントサイズ', mob_theme:'テーマ', mob_theme_btn:'ライト/ダーク',
+    mob_zoom:'PDFズーム', mob_focus:'フォーカスモード', mob_kara:'カラオケ', mob_search:'検索',
+    mob_bm:'ブックマーク', mob_export:'エクスポート', mob_copy:'コピー',
+    mob_lib_title:'📂 ファイル', mob_lib_empty:'文書がありません', mob_lib_add:'PDFを追加',
+    status_ready:'準備完了', status_paused:'一時停止中', status_stopped:'停止', status_done:'完了',
+    cfg_voice:'音声・ナレーション', cfg_country:'国・言語', cfg_country_sub:'利用可能なシステム音声をフィルター',
+    cfg_voicesel:'選択した音声', cfg_appearance:'外観', cfg_theme:'テーマ',
+    cfg_fontsize:'フォントサイズ', cfg_spacing:'行間', cfg_hlcolor:'ハイライト色',
+    cfg_readopts:'読書オプション', cfg_hl:'単語をハイライト（テキスト）', cfg_pdfhl:'PDFでハイライト',
+    cfg_scroll:'自動スクロール', cfg_cont:'連続読み上げ', cfg_cont_sub:'ページ終了時に次へ',
+    cfg_punct:'句読点をスキップ', cfg_guided:'ガイド読み（文単位）', cfg_guided_sub:'文ごとに読む',
+    cfg_sleep:'スリープタイマー', cfg_shortcuts:'キーボードショートカット', cfg_about:'このアプリについて',
+    cfg_about_text:'テキスト読み上げ、複数文書、セッション保持、RSVPフォーカスモード搭載のPDFリーダー。',
+    kd:{ play:'再生 / 一時停止', page:'前/次ページ', stop:'停止',
+      thumb:'サムネイル表示切替', kara:'カラオケ切替', side:'パネル表示/非表示',
+      rsvp:'RSVPフォーカスモード', full:'全画面', theme:'テーマ切替',
+      bm:'ページをブックマーク', search:'テキスト検索', zoom:'PDFズーム',
+      zoomreset:'ズームリセット', doc:'次の文書' },
+    sleep_off:'オフ',
+    app_subtitle:'スマートリーダー', add_pdfs:'PDFを追加', tabs_empty:'PDFが開かれていません',
+    reading:'読み上げ中', toast_no_pdf:'PDFを開いてください。', toast_no_text:'このページにテキストがありません。',
+  },
+  /* ── 简体中文 ─────────────────────────────────────── */
+  'zh-CN': {
+    placeholder:'请在上方选择国家…', hint_none:'请选择您的国家以加载可用语音。',
+    hint_ok:(n,lbl)=>`为 ${lbl} 找到 ${n} 个语音。`,
+    hint_miss:(lbl)=>`未找到 ${lbl} 的语音，请在系统设置中安装语音。`,
+    tab_reading:'阅读', tab_docs:'文档', tab_fav:'书签', tab_cfg:'设置',
+    view_single:'单页', view_all:'全部', view_text:'文本', view_kara:'卡拉OK',
+    view_rsvp:'专注', view_guided:'引导',
+    audio:'⚙️ 音频设置', speed:'速度', pitch:'音调', volume:'音量',
+    stats:'📊 统计', words:'词', read:'已读', left:'剩余',
+    page_btn:'页', all_btn:'全部', copy_btn:'复制',
+    notes:'📝 笔记', copy_notes:'复制笔记', clear_notes:'清除',
+    library:'📂 文档库', lib_empty:'未加载文档',
+    bookmarks:'🔖 书签', bm_empty:'暂无书签', bm_hint:'按 M 键收藏当前页',
+    page:'页面', current_word:'当前词', open_pdf:'打开 PDF 开始\n阅读',
+    upload_title:'打开您的 PDF', upload_sub:'拖放一个或多个文件',
+    upload_or:'或', upload_browse:'浏览文件', upload_fmts:'支持多个 PDF · 自动保存会话',
+    kara_title:'阅读卡拉OK', kara_hint:'开始阅读以查看卡拉OK…',
+    search_ph:'在文本中搜索…',
+    rsvp_guide:'专注模式 — 每次一个词', rsvp_start:'▶ 开始', rsvp_pause:'⏸ 暂停',
+    ctx_read:'从这里阅读', ctx_copy:'复制词语', ctx_dict:'在词典中查找',
+    ctx_search:'在文本中搜索', ctx_bm:'收藏页面',
+    mob_voice:'🎙 语音和音频', mob_page:'📄 页面', mob_opts:'⚙️ 选项',
+    mob_appear:'🎨 外观', mob_stats:'📊 统计', mob_tools:'🛠 工具',
+    mob_goto:'跳转页面', mob_hl:'高亮词语', mob_pdfhl:'在PDF中高亮',
+    mob_scroll:'自动滚动', mob_cont:'连续阅读', mob_punct:'跳过标点',
+    mob_fontsize:'字体大小', mob_theme:'主题', mob_theme_btn:'亮/暗',
+    mob_zoom:'PDF缩放', mob_focus:'专注模式', mob_kara:'卡拉OK', mob_search:'搜索',
+    mob_bm:'收藏', mob_export:'导出', mob_copy:'复制',
+    mob_lib_title:'📂 文件', mob_lib_empty:'未加载文档', mob_lib_add:'添加 PDF',
+    status_ready:'就绪', status_paused:'已暂停', status_stopped:'已停止', status_done:'完成',
+    cfg_voice:'语音与朗读', cfg_country:'您的国家/语言', cfg_country_sub:'过滤系统可用语音',
+    cfg_voicesel:'已选语音', cfg_appearance:'外观', cfg_theme:'主题',
+    cfg_fontsize:'字体大小', cfg_spacing:'行间距', cfg_hlcolor:'高亮颜色',
+    cfg_readopts:'阅读选项', cfg_hl:'高亮词语（文本）', cfg_pdfhl:'在PDF中高亮',
+    cfg_scroll:'自动滚动文本', cfg_cont:'连续阅读', cfg_cont_sub:'结束时自动翻页',
+    cfg_punct:'跳过标点', cfg_guided:'引导阅读（句子）', cfg_guided_sub:'逐句阅读',
+    cfg_sleep:'睡眠定时器', cfg_shortcuts:'键盘快捷键', cfg_about:'关于',
+    cfg_about_text:'支持文字转语音、多文档、持久会话和 RSVP 专注模式的 PDF 阅读器。',
+    kd:{ play:'播放 / 暂停朗读', page:'上一页/下一页', stop:'停止朗读',
+      thumb:'切换页面缩略图', kara:'切换卡拉OK', side:'显示/隐藏面板',
+      rsvp:'RSVP 专注模式', full:'全屏', theme:'切换亮/暗主题',
+      bm:'收藏当前页', search:'搜索文本', zoom:'PDF 缩放',
+      zoomreset:'重置缩放', doc:'下一个文档' },
+    sleep_off:'关闭',
+    app_subtitle:'智能阅读器', add_pdfs:'添加 PDF', tabs_empty:'未打开 PDF',
+    reading:'朗读中', toast_no_pdf:'请先打开 PDF。', toast_no_text:'此页面没有文本。',
+  },
+  /* ── 한국어 ───────────────────────────────────────── */
+  'ko-KR': {
+    placeholder:'위에서 국가를 선택하세요…', hint_none:'음성을 로드하려면 국가를 선택하세요.',
+    hint_ok:(n,lbl)=>`${lbl}에서 ${n}개의 음성을 찾았습니다.`,
+    hint_miss:(lbl)=>`${lbl}에 대한 음성을 찾을 수 없습니다. 시스템 설정에서 음성을 설치하세요.`,
+    tab_reading:'읽기', tab_docs:'문서', tab_fav:'북마크', tab_cfg:'설정',
+    view_single:'단일', view_all:'전체', view_text:'텍스트', view_kara:'노래방',
+    view_rsvp:'집중', view_guided:'안내',
+    audio:'⚙️ 오디오 설정', speed:'속도', pitch:'음높이', volume:'볼륨',
+    stats:'📊 통계', words:'단어', read:'읽음', left:'남음',
+    page_btn:'페이지', all_btn:'전체', copy_btn:'복사',
+    notes:'📝 메모', copy_notes:'메모 복사', clear_notes:'지우기',
+    library:'📂 라이브러리', lib_empty:'로드된 문서 없음',
+    bookmarks:'🔖 북마크', bm_empty:'북마크 없음', bm_hint:'M 키를 눌러 현재 페이지를 북마크',
+    page:'페이지', current_word:'현재 단어', open_pdf:'PDF를 열어\n읽기를 시작하세요',
+    upload_title:'PDF 열기', upload_sub:'파일을 드래그하여 놓으세요',
+    upload_or:'또는', upload_browse:'파일 찾기', upload_fmts:'여러 PDF · 자동 세션 저장',
+    kara_title:'읽기 노래방', kara_hint:'읽기를 시작하면 노래방이 표시됩니다…',
+    search_ph:'텍스트에서 검색…',
+    rsvp_guide:'집중 모드 — 한 번에 한 단어', rsvp_start:'▶ 시작', rsvp_pause:'⏸ 일시정지',
+    ctx_read:'여기서 읽기', ctx_copy:'단어 복사', ctx_dict:'사전에서 찾기',
+    ctx_search:'텍스트에서 검색', ctx_bm:'페이지 북마크',
+    mob_voice:'🎙 음성 및 오디오', mob_page:'📄 페이지', mob_opts:'⚙️ 옵션',
+    mob_appear:'🎨 모양', mob_stats:'📊 통계', mob_tools:'🛠 도구',
+    mob_goto:'페이지로 이동', mob_hl:'단어 강조', mob_pdfhl:'PDF에서 강조',
+    mob_scroll:'자동 스크롤', mob_cont:'연속 읽기', mob_punct:'구두점 건너뛰기',
+    mob_fontsize:'글꼴 크기', mob_theme:'테마', mob_theme_btn:'밝음/어두움',
+    mob_zoom:'PDF 확대/축소', mob_focus:'집중 모드', mob_kara:'노래방', mob_search:'검색',
+    mob_bm:'북마크', mob_export:'내보내기', mob_copy:'복사',
+    mob_lib_title:'📂 파일', mob_lib_empty:'로드된 문서 없음', mob_lib_add:'PDF 추가',
+    status_ready:'준비', status_paused:'일시정지', status_stopped:'정지됨', status_done:'완료',
+    cfg_voice:'음성 및 내레이션', cfg_country:'국가/언어', cfg_country_sub:'사용 가능한 시스템 음성 필터',
+    cfg_voicesel:'선택한 음성', cfg_appearance:'모양', cfg_theme:'테마',
+    cfg_fontsize:'글꼴 크기', cfg_spacing:'줄 간격', cfg_hlcolor:'강조 색상',
+    cfg_readopts:'읽기 옵션', cfg_hl:'단어 강조(텍스트)', cfg_pdfhl:'PDF에서 강조',
+    cfg_scroll:'자동 스크롤', cfg_cont:'연속 읽기', cfg_cont_sub:'페이지 완료 시 다음으로 이동',
+    cfg_punct:'구두점 건너뛰기', cfg_guided:'안내 읽기(문장)', cfg_guided_sub:'문장별 읽기',
+    cfg_sleep:'수면 타이머', cfg_shortcuts:'키보드 단축키', cfg_about:'정보',
+    cfg_about_text:'텍스트 음성 변환, 다중 문서, 지속 세션, RSVP 집중 모드를 갖춘 PDF 리더.',
+    kd:{ play:'재생 / 내레이션 일시정지', page:'이전 / 다음 페이지', stop:'내레이션 중지',
+      thumb:'페이지 썸네일 전환', kara:'노래방 전환', side:'패널 표시/숨기기',
+      rsvp:'RSVP 집중 모드', full:'전체 화면', theme:'밝음/어두움 테마 전환',
+      bm:'현재 페이지 북마크', search:'텍스트 검색', zoom:'PDF 확대/축소',
+      zoomreset:'확대/축소 초기화', doc:'다음 문서' },
+    sleep_off:'끄기',
+    app_subtitle:'스마트 리더', add_pdfs:'PDF 추가', tabs_empty:'열린 PDF 없음',
+    reading:'읽는 중', toast_no_pdf:'PDF를 먼저 열어주세요.', toast_no_text:'이 페이지에 텍스트가 없습니다.',
+  },
+  /* ── Русский ──────────────────────────────────────── */
+  'ru-RU': {
+    placeholder:'Выберите страну выше…', hint_none:'Выберите страну для загрузки голосов.',
+    hint_ok:(n,lbl)=>`Найдено ${n} голос${n>1?'ов':''} для ${lbl}.`,
+    hint_miss:(lbl)=>`Голоса для ${lbl} не найдены. Установите голоса в настройках системы.`,
+    tab_reading:'Чтение', tab_docs:'Документы', tab_fav:'Закладки', tab_cfg:'Настройки',
+    view_single:'Одна', view_all:'Все', view_text:'Текст', view_kara:'Караоке',
+    view_rsvp:'Фокус', view_guided:'Ведомый',
+    audio:'⚙️ Настройки аудио', speed:'Скорость', pitch:'Тональность', volume:'Громкость',
+    stats:'📊 Статистика', words:'слов', read:'прочитано', left:'осталось',
+    page_btn:'Стр.', all_btn:'Всё', copy_btn:'Копировать',
+    notes:'📝 Заметки', copy_notes:'Копировать заметки', clear_notes:'Очистить',
+    library:'📂 Библиотека', lib_empty:'Документы не загружены',
+    bookmarks:'🔖 Закладки', bm_empty:'Закладок пока нет', bm_hint:'Нажмите M для создания закладки',
+    page:'Страница', current_word:'текущее слово', open_pdf:'Откройте PDF, чтобы\nначать чтение',
+    upload_title:'Откройте ваши PDF', upload_sub:'Перетащите один или несколько файлов',
+    upload_or:'или', upload_browse:'Выбрать файлы', upload_fmts:'Несколько PDF · автосохранение сессии',
+    kara_title:'Чтение-Караоке', kara_hint:'Начните чтение, чтобы увидеть слова…',
+    search_ph:'Поиск в тексте…',
+    rsvp_guide:'РЕЖИМ ФОКУСА — ОДНО СЛОВО ЗА РАЗ', rsvp_start:'▶ Начать', rsvp_pause:'⏸ Пауза',
+    ctx_read:'Читать отсюда', ctx_copy:'Копировать слово', ctx_dict:'Поиск в словаре',
+    ctx_search:'Поиск в тексте', ctx_bm:'Добавить закладку',
+    mob_voice:'🎙 Голос и аудио', mob_page:'📄 Страница', mob_opts:'⚙️ Опции',
+    mob_appear:'🎨 Внешний вид', mob_stats:'📊 Статистика', mob_tools:'🛠 Инструменты',
+    mob_goto:'Перейти к странице', mob_hl:'Выделить слово', mob_pdfhl:'Выделить в PDF',
+    mob_scroll:'Автопрокрутка', mob_cont:'Непрерывное чтение', mob_punct:'Пропустить знаки',
+    mob_fontsize:'Размер шрифта', mob_theme:'Тема', mob_theme_btn:'Светлая/Тёмная',
+    mob_zoom:'Масштаб PDF', mob_focus:'Режим фокуса', mob_kara:'Караоке', mob_search:'Поиск',
+    mob_bm:'Закладка', mob_export:'Экспорт', mob_copy:'Копировать',
+    mob_lib_title:'📂 Файлы', mob_lib_empty:'Документы не загружены', mob_lib_add:'Добавить PDF',
+    status_ready:'Готово', status_paused:'Пауза', status_stopped:'Остановлено', status_done:'Завершено',
+    cfg_voice:'Голос и дикция', cfg_country:'Ваша страна / язык', cfg_country_sub:'Фильтрует доступные системные голоса',
+    cfg_voicesel:'Выбранный голос', cfg_appearance:'Внешний вид', cfg_theme:'Тема',
+    cfg_fontsize:'Размер шрифта', cfg_spacing:'Межстрочный интервал', cfg_hlcolor:'Цвет выделения',
+    cfg_readopts:'Параметры чтения', cfg_hl:'Выделять слово (текст)', cfg_pdfhl:'Выделять в PDF',
+    cfg_scroll:'Автопрокрутка', cfg_cont:'Непрерывное чтение', cfg_cont_sub:'Переходит к следующей странице',
+    cfg_punct:'Пропускать знаки препинания', cfg_guided:'Ведомое чтение (предложения)', cfg_guided_sub:'Читает предложение за предложением',
+    cfg_sleep:'Таймер сна', cfg_shortcuts:'Горячие клавиши', cfg_about:'О программе',
+    cfg_about_text:'Ридер PDF с синтезом речи, несколькими документами, сохранением сессии и режимом фокуса RSVP.',
+    kd:{ play:'Воспроизведение / Пауза', page:'Предыдущая / следующая страница', stop:'Остановить',
+      thumb:'Переключить миниатюры', kara:'Переключить Караоке', side:'Показать / скрыть панель',
+      rsvp:'Режим фокуса RSVP', full:'Полный экран', theme:'Переключить тему',
+      bm:'Добавить закладку', search:'Поиск в тексте', zoom:'Масштаб PDF',
+      zoomreset:'Сбросить масштаб', doc:'Следующий документ' },
+    sleep_off:'Выкл',
+    app_subtitle:'Умный Ридер', add_pdfs:'Добавить PDF', tabs_empty:'PDF не открыт',
+    reading:'Читаю', toast_no_pdf:'Сначала откройте PDF.', toast_no_text:'Нет текста на этой странице.',
+  },
+  /* ── العربية ──────────────────────────────────────── */
+  'ar-SA': {
+    dir:'rtl',
+    placeholder:'اختر دولة من الأعلى…', hint_none:'اختر دولتك لتحميل الأصوات المتاحة.',
+    hint_ok:(n,lbl)=>`تم العثور على ${n} صوت لـ ${lbl}.`,
+    hint_miss:(lbl)=>`لم يتم العثور على أصوات لـ ${lbl}. قم بتثبيت الأصوات في إعدادات النظام.`,
+    tab_reading:'القراءة', tab_docs:'المستندات', tab_fav:'الإشارات', tab_cfg:'الإعدادات',
+    view_single:'صفحة', view_all:'الكل', view_text:'نص', view_kara:'كاراوكي',
+    view_rsvp:'تركيز', view_guided:'موجه',
+    audio:'⚙️ إعدادات الصوت', speed:'السرعة', pitch:'درجة الصوت', volume:'مستوى الصوت',
+    stats:'📊 الإحصائيات', words:'كلمة', read:'مقروء', left:'متبقي',
+    page_btn:'صفحة', all_btn:'الكل', copy_btn:'نسخ',
+    notes:'📝 الملاحظات', copy_notes:'نسخ الملاحظات', clear_notes:'مسح',
+    library:'📂 المكتبة', lib_empty:'لم يتم تحميل أي مستند',
+    bookmarks:'🔖 الإشارات', bm_empty:'لا توجد إشارات حتى الآن', bm_hint:'اضغط M لإضافة إشارة للصفحة الحالية',
+    page:'صفحة', current_word:'الكلمة الحالية', open_pdf:'افتح ملف PDF\nللبدء في القراءة',
+    upload_title:'افتح ملفات PDF', upload_sub:'اسحب وأفلت ملفاً أو أكثر',
+    upload_or:'أو', upload_browse:'استعراض الملفات', upload_fmts:'عدة ملفات PDF · حفظ تلقائي',
+    kara_title:'كاراوكي القراءة', kara_hint:'ابدأ القراءة لرؤية الكاراوكي…',
+    search_ph:'ابحث في النص…',
+    rsvp_guide:'وضع التركيز — كلمة واحدة في كل مرة', rsvp_start:'▶ ابدأ', rsvp_pause:'⏸ إيقاف مؤقت',
+    ctx_read:'اقرأ من هنا', ctx_copy:'نسخ الكلمة', ctx_dict:'البحث في القاموس',
+    ctx_search:'البحث في النص', ctx_bm:'إضافة إشارة للصفحة',
+    mob_voice:'🎙 الصوت والصوت', mob_page:'📄 الصفحة', mob_opts:'⚙️ الخيارات',
+    mob_appear:'🎨 المظهر', mob_stats:'📊 الإحصائيات', mob_tools:'🛠 الأدوات',
+    mob_goto:'الانتقال إلى الصفحة', mob_hl:'تمييز الكلمة', mob_pdfhl:'التمييز في PDF',
+    mob_scroll:'التمرير التلقائي', mob_cont:'القراءة المستمرة', mob_punct:'تخطي علامات الترقيم',
+    mob_fontsize:'حجم الخط', mob_theme:'السمة', mob_theme_btn:'فاتح/داكن',
+    mob_zoom:'تكبير PDF', mob_focus:'وضع التركيز', mob_kara:'كاراوكي', mob_search:'بحث',
+    mob_bm:'إشارة', mob_export:'تصدير', mob_copy:'نسخ',
+    mob_lib_title:'📂 الملفات', mob_lib_empty:'لم يتم تحميل أي مستند', mob_lib_add:'إضافة PDF',
+    status_ready:'جاهز', status_paused:'موقوف', status_stopped:'متوقف', status_done:'اكتمل',
+    cfg_voice:'الصوت والسرد', cfg_country:'دولتك / لغتك', cfg_country_sub:'يرشح الأصوات المتاحة في النظام',
+    cfg_voicesel:'الصوت المحدد', cfg_appearance:'المظهر', cfg_theme:'السمة',
+    cfg_fontsize:'حجم الخط', cfg_spacing:'تباعد الأسطر', cfg_hlcolor:'لون التمييز',
+    cfg_readopts:'خيارات القراءة', cfg_hl:'تمييز الكلمة (نص)', cfg_pdfhl:'التمييز في PDF',
+    cfg_scroll:'التمرير التلقائي', cfg_cont:'القراءة المستمرة', cfg_cont_sub:'ينتقل إلى الصفحة التالية عند الانتهاء',
+    cfg_punct:'تخطي علامات الترقيم', cfg_guided:'القراءة الموجهة (جمل)', cfg_guided_sub:'يقرأ جملة بجملة',
+    cfg_sleep:'مؤقت النوم', cfg_shortcuts:'اختصارات لوحة المفاتيح', cfg_about:'حول',
+    cfg_about_text:'قارئ PDF مع تحويل النص إلى كلام، مستندات متعددة، جلسة ثابتة ووضع تركيز RSVP.',
+    kd:{ play:'تشغيل / إيقاف مؤقت', page:'الصفحة السابقة / التالية', stop:'إيقاف',
+      thumb:'تبديل الصور المصغرة', kara:'تبديل الكاراوكي', side:'إظهار / إخفاء اللوحة',
+      rsvp:'وضع تركيز RSVP', full:'ملء الشاشة', theme:'تبديل السمة',
+      bm:'إشارة مرجعية للصفحة', search:'البحث في النص', zoom:'تكبير PDF',
+      zoomreset:'إعادة ضبط التكبير', doc:'المستند التالي' },
+    sleep_off:'إيقاف',
+    app_subtitle:'القارئ الذكي', add_pdfs:'إضافة PDF', tabs_empty:'لا يوجد PDF مفتوح',
+    reading:'قراءة', toast_no_pdf:'افتح ملف PDF أولاً.', toast_no_text:'لا يوجد نص في هذه الصفحة.',
+  },
+  /* ── हिन्दी ───────────────────────────────────────── */
+  'hi-IN': {
+    placeholder:'ऊपर से देश चुनें…', hint_none:'आवाज़ें लोड करने के लिए अपना देश चुनें।',
+    hint_ok:(n,lbl)=>`${lbl} के लिए ${n} आवाज़ें मिलीं।`,
+    hint_miss:(lbl)=>`${lbl} के लिए कोई आवाज़ नहीं मिली। सिस्टम सेटिंग्स में आवाज़ें इंस्टॉल करें।`,
+    tab_reading:'पढ़ना', tab_docs:'दस्तावेज़', tab_fav:'बुकमार्क', tab_cfg:'सेटिंग्स',
+    view_single:'एक', view_all:'सभी', view_text:'पाठ', view_kara:'कराओके',
+    view_rsvp:'फ़ोकस', view_guided:'निर्देशित',
+    audio:'⚙️ ऑडियो सेटिंग्स', speed:'गति', pitch:'पिच', volume:'वॉल्यूम',
+    stats:'📊 आँकड़े', words:'शब्द', read:'पढ़ा', left:'बचा',
+    page_btn:'पृ.', all_btn:'सब', copy_btn:'कॉपी',
+    notes:'📝 नोट्स', copy_notes:'नोट्स कॉपी करें', clear_notes:'साफ़ करें',
+    library:'📂 लाइब्रेरी', lib_empty:'कोई दस्तावेज़ लोड नहीं',
+    bookmarks:'🔖 बुकमार्क', bm_empty:'अभी तक कोई बुकमार्क नहीं', bm_hint:'वर्तमान पृष्ठ को बुकमार्क करने के लिए M दबाएँ',
+    page:'पृष्ठ', current_word:'वर्तमान शब्द', open_pdf:'पढ़ना शुरू करने के लिए\nPDF खोलें',
+    upload_title:'अपना PDF खोलें', upload_sub:'एक या अधिक फ़ाइलें खींचें और छोड़ें',
+    upload_or:'या', upload_browse:'फ़ाइलें ब्राउज़ करें', upload_fmts:'एकाधिक PDF · स्वचालित सत्र',
+    kara_title:'पठन कराओके', kara_hint:'कराओके देखने के लिए पढ़ना शुरू करें…',
+    search_ph:'पाठ में खोजें…',
+    rsvp_guide:'फ़ोकस मोड — एक बार में एक शब्द', rsvp_start:'▶ शुरू करें', rsvp_pause:'⏸ रोकें',
+    ctx_read:'यहाँ से पढ़ें', ctx_copy:'शब्द कॉपी करें', ctx_dict:'शब्दकोश में खोजें',
+    ctx_search:'पाठ में खोजें', ctx_bm:'पृष्ठ बुकमार्क करें',
+    mob_voice:'🎙 आवाज़ और ऑडियो', mob_page:'📄 पृष्ठ', mob_opts:'⚙️ विकल्प',
+    mob_appear:'🎨 दिखावट', mob_stats:'📊 आँकड़े', mob_tools:'🛠 उपकरण',
+    mob_goto:'पृष्ठ पर जाएँ', mob_hl:'शब्द हाइलाइट करें', mob_pdfhl:'PDF में हाइलाइट',
+    mob_scroll:'स्वतः स्क्रॉल', mob_cont:'निरंतर पठन', mob_punct:'विराम चिह्न छोड़ें',
+    mob_fontsize:'फ़ॉन्ट आकार', mob_theme:'थीम', mob_theme_btn:'हल्का/गहरा',
+    mob_zoom:'PDF ज़ूम', mob_focus:'फ़ोकस मोड', mob_kara:'कराओके', mob_search:'खोज',
+    mob_bm:'बुकमार्क', mob_export:'निर्यात', mob_copy:'कॉपी',
+    mob_lib_title:'📂 फ़ाइलें', mob_lib_empty:'कोई दस्तावेज़ लोड नहीं', mob_lib_add:'PDF जोड़ें',
+    status_ready:'तैयार', status_paused:'रुका हुआ', status_stopped:'रोका गया', status_done:'पूर्ण',
+    cfg_voice:'आवाज़ और वर्णन', cfg_country:'आपका देश / भाषा', cfg_country_sub:'उपलब्ध सिस्टम आवाज़ें फ़िल्टर करता है',
+    cfg_voicesel:'चयनित आवाज़', cfg_appearance:'दिखावट', cfg_theme:'थीम',
+    cfg_fontsize:'फ़ॉन्ट आकार', cfg_spacing:'पंक्ति अंतर', cfg_hlcolor:'हाइलाइट रंग',
+    cfg_readopts:'पठन विकल्प', cfg_hl:'शब्द हाइलाइट करें (पाठ)', cfg_pdfhl:'PDF में हाइलाइट',
+    cfg_scroll:'स्वतः स्क्रॉल', cfg_cont:'निरंतर पठन', cfg_cont_sub:'समाप्त होने पर पृष्ठ आगे बढ़ता है',
+    cfg_punct:'विराम चिह्न छोड़ें', cfg_guided:'निर्देशित पठन (वाक्य)', cfg_guided_sub:'वाक्य दर वाक्य पढ़ता है',
+    cfg_sleep:'स्लीप टाइमर', cfg_shortcuts:'कीबोर्ड शॉर्टकट', cfg_about:'के बारे में',
+    cfg_about_text:'टेक्स्ट-टू-स्पीच, एकाधिक दस्तावेज़, लगातार सत्र और RSVP फ़ोकस मोड वाला PDF रीडर।',
+    kd:{ play:'चलाएँ / वर्णन रोकें', page:'पिछला / अगला पृष्ठ', stop:'वर्णन बंद करें',
+      thumb:'पृष्ठ थंबनेल टॉगल', kara:'कराओके टॉगल', side:'पैनल दिखाएँ/छुपाएँ',
+      rsvp:'RSVP फ़ोकस मोड', full:'पूर्णस्क्रीन', theme:'थीम बदलें',
+      bm:'पृष्ठ बुकमार्क करें', search:'पाठ में खोजें', zoom:'PDF ज़ूम',
+      zoomreset:'ज़ूम रीसेट करें', doc:'अगला दस्तावेज़' },
+    sleep_off:'बंद',
+    app_subtitle:'स्मार्ट रीडर', add_pdfs:'PDF जोड़ें', tabs_empty:'कोई PDF नहीं खुला',
+    reading:'पढ़ रहा है', toast_no_pdf:'पहले PDF खोलें।', toast_no_text:'इस पृष्ठ पर कोई पाठ नहीं।',
   },
 };
 
@@ -1943,74 +2895,137 @@ function getT(lang) {
 
 function applyI18n(lang) {
   const t = getT(lang);
-  // update html lang attribute
   document.documentElement.lang = lang.split('-')[0];
-  const s = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
-  s('lbl-audio',       t.audio);
-  s('lbl-speed',       t.speed);
-  s('lbl-pitch',       t.pitch);
-  s('lbl-volume',      t.volume);
-  s('lbl-stats',       t.stats);
-  s('lbl-stat-words',  t.words);
-  s('lbl-stat-read',   t.read);
-  s('lbl-stat-left',   t.left);
-  s('lbl-btn-page',    t.page_btn);
-  s('lbl-btn-all',     t.all_btn);
-  s('lbl-btn-copy',    t.copy_btn);
-  s('lbl-notes',       t.notes);
-  s('btn-copy-notes',  t.copy_notes);
-  s('btn-clear-notes', t.clear_notes);
-  s('lbl-library',     t.library + ' ');  // space before badge
-  s('lbl-lib-empty',   t.lib_empty);
-  s('lbl-bookmarks',   t.bookmarks);
-  s('lbl-bm-empty',    t.bm_empty);
-  s('lbl-bm-hint',     '');  // rebuild with kbd below
-  s('lbl-page',        t.page);
-  s('lbl-current-word',t.current_word);
-  s('lbl-open-pdf',    t.open_pdf);
-  // notes textarea placeholder
-  const ta = document.getElementById('notesArea');
-  if (ta) ta.placeholder = t.notes.replace('📝 ','') + '…';
-  // cfg labels
-  s('cfg-lbl-voice',      t.cfg_voice);
-  s('cfg-lbl-country',    t.cfg_country);
-  s('cfg-sub-country',    t.cfg_country_sub);
-  s('cfg-lbl-voicesel',   t.cfg_voicesel);
-  s('cfg-lbl-appearance', t.cfg_appearance);
-  s('cfg-lbl-theme',      t.cfg_theme);
-  s('cfg-lbl-fontsize',   t.cfg_fontsize);
-  s('cfg-lbl-spacing',    t.cfg_spacing);
-  s('cfg-lbl-hlcolor',    t.cfg_hlcolor);
-  s('cfg-lbl-readopts',   t.cfg_readopts);
-  s('cfg-lbl-hl',         t.cfg_hl);
-  s('cfg-lbl-pdfhl',      t.cfg_pdfhl);
-  s('cfg-lbl-scroll',     t.cfg_scroll);
-  s('cfg-lbl-cont',       t.cfg_cont);
-  s('cfg-sub-cont',       t.cfg_cont_sub);
-  s('cfg-lbl-punct',      t.cfg_punct);
-  s('cfg-lbl-guided',     t.cfg_guided);
-  s('cfg-sub-guided',     t.cfg_guided_sub);
-  s('cfg-lbl-sleep',      t.cfg_sleep);
-  s('cfg-lbl-shortcuts',  t.cfg_shortcuts);
-  s('cfg-lbl-about',      t.cfg_about);
-  s('cfg-about-text',     t.cfg_about_text);
-  s('opt-sleep-off',      t.sleep_off);
-  // shortcut descriptions
-  const kd = t.kd;
-  s('kd-play',   kd.play);   s('kd-page',  kd.page);  s('kd-stop', kd.stop);
-  s('kd-thumb',  kd.thumb);  s('kd-kara',  kd.kara);  s('kd-side', kd.side);
-  s('kd-rsvp',   kd.rsvp);   s('kd-full',  kd.full);  s('kd-theme',kd.theme);
-  s('kd-bm',     kd.bm);     s('kd-search',kd.search);s('kd-zoom', kd.zoom);
-  s('kd-zoomreset',kd.zoomreset); s('kd-doc', kd.doc);
-  // rebuild lib-count badge (gets wiped above)
-  const lc = document.getElementById('libCount');
-  if (lc) { const el = document.getElementById('lbl-library'); if (el) { el.textContent = t.library + ' '; el.appendChild(lc); } }
-  // voice hint default
-  const vh = document.getElementById('voiceHintEl');
-  if (vh) vh.textContent = t.hint_none;
-  // voice placeholder
+  document.documentElement.dir  = t.dir || 'ltr';
+  document.body.style.direction  = t.dir || 'ltr';
+
+  const s  = (id, txt) => { const e = document.getElementById(id); if (e && txt !== undefined) e.textContent = txt; };
+  const sa = (id, attr, val) => { const e = document.getElementById(id); if (e && val !== undefined) e[attr] = val; };
+
+  // document title + logo subtitle
+  document.title = 'LexPDF — ' + (t.app_subtitle || 'LexPDF');
+  s('logo-subtitle',   t.app_subtitle);
+  s('hdr-add-btn-lbl', t.add_pdfs);
+  s('tabsEmpty',       t.tabs_empty);
+  if (!isPlaying) s('statusText', t.status_ready);
+
+  // sidebar tabs
+  s('tab-lbl-reading', t.tab_reading); s('tab-lbl-docs', t.tab_docs);
+  s('tab-lbl-fav', t.tab_fav);        s('tab-lbl-cfg',  t.tab_cfg);
+
+  // viewer toolbar
+  s('lbl-view-single', t.view_single); s('lbl-view-all',    t.view_all);
+  s('lbl-view-text',   t.view_text);   s('lbl-view-kara',   t.view_kara);
+  s('lbl-view-rsvp',   t.view_rsvp);   s('lbl-view-guided', t.view_guided);
+
+  // audio
+  s('lbl-audio',  t.audio);  s('lbl-speed',  t.speed);
+  s('lbl-pitch',  t.pitch);  s('lbl-volume', t.volume);
+
+  // stats + export
+  s('lbl-stats',      t.stats);     s('lbl-stat-words', t.words);
+  s('lbl-stat-read',  t.read);      s('lbl-stat-left',  t.left);
+  s('lbl-btn-page',   t.page_btn);  s('lbl-btn-all',    t.all_btn);
+  s('lbl-btn-copy',   t.copy_btn);
+
+  // notes
+  s('lbl-notes', t.notes); s('btn-copy-notes', t.copy_notes); s('btn-clear-notes', t.clear_notes);
+  const notesTA = document.getElementById('notesArea');
+  if (notesTA) notesTA.placeholder = (t.notes||'').replace(/📝\s*/,'') + '…';
+
+  // library
+  const lblLib = document.getElementById('lbl-library');
+  if (lblLib) { const lc = document.getElementById('libCount'); lblLib.textContent = t.library + ' '; if (lc) lblLib.appendChild(lc); }
+  s('lbl-lib-empty', t.lib_empty);
+
+  // bookmarks
+  s('lbl-bookmarks', t.bookmarks); s('lbl-bm-empty', t.bm_empty); s('lbl-bm-hint', t.bm_hint);
+
+  // page nav + word display
+  s('lbl-page', t.page); s('lbl-current-word', t.current_word); s('lbl-open-pdf', t.open_pdf);
+
+  // upload area (static + any dynamic)
+  ['upload-title','upload-subtitle','upload-or','upload-browse','upload-fmts'].forEach(id => {
+    s(id, t[{
+      'upload-title':'upload_title','upload-subtitle':'upload_sub',
+      'upload-or':'upload_or','upload-browse':'upload_browse','upload-fmts':'upload_fmts'
+    }[id]]);
+  });
+  // also target dynamic upload area rebuilt by resetViewer
+  const uploadArea = document.getElementById('uploadArea');
+  if (uploadArea) {
+    const q = (sel, key) => { const e = uploadArea.querySelector(sel); if (e) e.textContent = t[key]; };
+    q('h3', 'upload_title'); q('.upload-text p', 'upload_sub');
+    q('.or', 'upload_or');   q('.btn-browse', 'upload_browse');
+    q('.supported-fmts', 'upload_fmts');
+  }
+
+  // karaoke
+  s('kara-title-lbl', t.kara_title);
+  const kw = document.getElementById('karaokeWords');
+  if (kw && kw.querySelectorAll('.kw').length === 1) kw.querySelector('.kw').textContent = t.kara_hint;
+
+  // search
+  sa('searchInput', 'placeholder', t.search_ph);
+
+  // RSVP
+  s('rsvp-guide-lbl', t.rsvp_guide);
+  const rpb = document.getElementById('rsvpPlayBtn');
+  if (rpb && !rsvpPlaying) rpb.textContent = t.rsvp_start;
+
+  // context menu
+  s('ctx-read-from', t.ctx_read); s('ctx-copy-word', t.ctx_copy);
+  s('ctx-dict',      t.ctx_dict); s('ctx-search',    t.ctx_search);
+  s('ctx-bookmark',  t.ctx_bm);
+
+  // mobile sheet
+  s('mob-title-voice',   t.mob_voice);   s('mob-lbl-speed',    t.speed);
+  s('mob-lbl-volume',    t.volume);      s('mob-title-page',   t.mob_page);
+  s('mob-lbl-goto',      t.mob_goto);    s('mob-title-opts',   t.mob_opts);
+  s('mob-lbl-hl',        t.mob_hl);      s('mob-lbl-pdfhl',    t.mob_pdfhl);
+  s('mob-lbl-scroll',    t.mob_scroll);  s('mob-lbl-cont',     t.mob_cont);
+  s('mob-lbl-punct',     t.mob_punct);   s('mob-title-appear', t.mob_appear);
+  s('mob-lbl-fontsize',  t.mob_fontsize);s('mob-lbl-theme',    t.mob_theme);
+  s('mob-lbl-theme-btn', t.mob_theme_btn);s('mob-lbl-zoom',    t.mob_zoom);
+  s('mob-title-stats',   t.mob_stats);   s('mob-lbl-stat-words',t.words);
+  s('mob-lbl-stat-read', t.read);        s('mob-lbl-stat-left', t.left);
+  s('mob-title-tools',   t.mob_tools);   s('mob-btn-focus',    t.mob_focus);
+  s('mob-btn-kara',      t.mob_kara);    s('mob-btn-search',   t.mob_search);
+  s('mob-btn-bm',        t.mob_bm);      s('mob-btn-export',   t.mob_export);
+  s('mob-btn-copy',      t.mob_copy);
+
+  // mobile lib sheet
+  const mlt = document.getElementById('mob-lib-title');
+  if (mlt) { const lc2 = document.getElementById('libCountMob'); mlt.textContent = t.mob_lib_title + ' '; if (lc2) mlt.appendChild(lc2); }
+  s('mob-lib-empty', t.mob_lib_empty); s('mob-lib-add-lbl', t.mob_lib_add);
+
+  // cfg pane
+  s('cfg-lbl-voice',     t.cfg_voice);      s('cfg-lbl-country',  t.cfg_country);
+  s('cfg-sub-country',   t.cfg_country_sub);s('cfg-lbl-voicesel', t.cfg_voicesel);
+  s('cfg-lbl-appearance',t.cfg_appearance); s('cfg-lbl-theme',    t.cfg_theme);
+  s('cfg-lbl-fontsize',  t.cfg_fontsize);   s('cfg-lbl-spacing',  t.cfg_spacing);
+  s('cfg-lbl-hlcolor',   t.cfg_hlcolor);    s('cfg-lbl-readopts', t.cfg_readopts);
+  s('cfg-lbl-hl',        t.cfg_hl);         s('cfg-lbl-pdfhl',    t.cfg_pdfhl);
+  s('cfg-lbl-scroll',    t.cfg_scroll);     s('cfg-lbl-cont',     t.cfg_cont);
+  s('cfg-sub-cont',      t.cfg_cont_sub);   s('cfg-lbl-punct',    t.cfg_punct);
+  s('cfg-lbl-guided',    t.cfg_guided);     s('cfg-sub-guided',   t.cfg_guided_sub);
+  s('cfg-lbl-sleep',     t.cfg_sleep);      s('cfg-lbl-shortcuts',t.cfg_shortcuts);
+  s('cfg-lbl-about',     t.cfg_about);      s('cfg-about-text',   t.cfg_about_text);
+  s('opt-sleep-off',     t.sleep_off);
+
+  // voice selector placeholder
   const vp = document.getElementById('opt-voice-placeholder');
   if (vp) vp.textContent = t.placeholder;
+  const vh = document.getElementById('voiceHintEl');
+  if (vh) vh.textContent = t.hint_none;
+
+  // keyboard shortcut descriptions
+  const kd = t.kd || {};
+  s('kd-play',kd.play); s('kd-page',kd.page); s('kd-stop',kd.stop);
+  s('kd-thumb',kd.thumb); s('kd-kara',kd.kara); s('kd-side',kd.side);
+  s('kd-rsvp',kd.rsvp); s('kd-full',kd.full); s('kd-theme',kd.theme);
+  s('kd-bm',kd.bm); s('kd-search',kd.search); s('kd-zoom',kd.zoom);
+  s('kd-zoomreset',kd.zoomreset); s('kd-doc',kd.doc);
 }
 
 function onCountryChange() {
@@ -2039,9 +3054,12 @@ function loadVoicesForCountry(lang) {
 
   vsEl.innerHTML = '';
   if (!filtered.length) {
-    const o = document.createElement('option'); o.value = ''; o.textContent = t.placeholder;
-    vsEl.appendChild(o);
-    if (hint) hint.textContent = t.hint_miss(label);
+    // Sem voz nativa → adicionar opção Google TTS fallback
+    const oFallback = document.createElement('option');
+    oFallback.value = '';
+    oFallback.textContent = '🌐 Google TTS (automático)';
+    vsEl.appendChild(oFallback);
+    if (hint) hint.textContent = `🌐 Google TTS ativo para ${label} — voz online garantida sem instalação.`;
     syncMobileVoice(); return;
   }
 
@@ -2055,6 +3073,12 @@ function loadVoicesForCountry(lang) {
     });
     vsEl.appendChild(g);
   });
+
+  // Adicionar Google TTS como opção extra sempre
+  const gGroup = document.createElement('optgroup'); gGroup.label = '🌐 Online';
+  const gOpt = document.createElement('option'); gOpt.value = '__gtts__'; gOpt.textContent = '🌐 Google TTS (online)';
+  gGroup.appendChild(gOpt); vsEl.appendChild(gGroup);
+
   if (hint) hint.textContent = t.hint_ok(filtered.length, label);
   syncMobileVoice();
 }
@@ -2075,6 +3099,168 @@ function applyVoiceToUtterance(utt) {
   utt.rate   = parseFloat(document.getElementById('speedSlider').value);
   utt.pitch  = parseFloat(document.getElementById('pitchSlider').value);
   utt.volume = parseFloat(document.getElementById('volumeSlider').value);
+}
+
+// ── GOOGLE TTS FALLBACK ENGINE ───────────────────────────────────
+// Usado automaticamente quando não há vozes nativas para o idioma selecionado.
+// Endpoint público do Google Translate TTS — sem API key necessária.
+const GTTS_LANG_MAP = {
+  'pt-BR':'pt','pt-PT':'pt','en-US':'en','en-GB':'en','es-ES':'es','es-MX':'es',
+  'fr-FR':'fr','de-DE':'de','it-IT':'it','ja-JP':'ja','zh-CN':'zh-CN','ko-KR':'ko',
+  'ru-RU':'ru','ar-SA':'ar','hi-IN':'hi','nl-NL':'nl','pl-PL':'pl','tr-TR':'tr',
+};
+
+const gTTS = (() => {
+  let audioEl = null;
+  let chunks  = [];
+  let chunkIdx = 0;
+  let _lang   = 'pt';
+  let _rate   = 1;
+  let _volume = 1;
+  let _onend  = null;
+  let _onerror= null;
+  let _onword = null; // callback(chunkStartWordIdx, chunkWords[])
+  let _wordBaseIdx = 0;
+  let _allWords = [];
+  let _active = false;
+  let _wordTimer = null;
+  let _pauseTimer = null;
+
+  function getAudio() {
+    if (!audioEl) {
+      audioEl = new Audio();
+      // NÃO definir crossOrigin — evita CORS preflight no endpoint Google TTS
+    }
+    return audioEl;
+  }
+
+  function buildUrl(text, lang) {
+    // client=tw-ob: endpoint público do Google TTS sem token nem CORS
+    const params = new URLSearchParams({
+      ie: 'UTF-8', tl: lang, q: text, client: 'tw-ob',
+    });
+    return `https://translate.google.com/translate_tts?${params}`;
+  }
+
+  // Divide texto em chunks de ≤ 190 chars sem cortar palavras.
+  // Tenta quebrar nos pontos de pontuação para preservar pausas naturais.
+  function splitChunks(words) {
+    const result = [];
+    let cur = [], curLen = 0;
+    for (const w of words) {
+      if (curLen + w.length + 1 > 190 && cur.length) {
+        result.push(cur);
+        cur = []; curLen = 0;
+      }
+      cur.push(w);
+      curLen += w.length + 1;
+      // Break chunk at sentence-ending punctuation so Google TTS pronounces each sentence naturally
+      const last = w[w.length - 1];
+      if ((last === '.' || last === '!' || last === '?') && curLen > 20) {
+        result.push(cur);
+        cur = []; curLen = 0;
+      }
+    }
+    if (cur.length) result.push(cur);
+    return result;
+  }
+
+  // Returns pause duration in ms after a chunk, based on trailing punctuation of its last word.
+  // Duration is scaled by rate so faster reading = shorter pauses.
+  function pauseAfterChunk(wordsInChunk, rate) {
+    if (!wordsInChunk.length) return 0;
+    const last = wordsInChunk[wordsInChunk.length - 1];
+    const ch = last[last.length - 1];
+    if (ch === '.' || ch === '!' || ch === '?') return Math.round(550 / rate);
+    if (ch === ',' || ch === ';' || ch === ':')  return Math.round(250 / rate);
+    return 0;
+  }
+
+  function _startWordTimer(wordsInChunk, baseIdx, duration) {
+    if (_wordTimer) clearInterval(_wordTimer);
+    if (!wordsInChunk.length) return;
+    const interval = (duration * 1000) / wordsInChunk.length;
+    let i = 0;
+    _wordTimer = setInterval(() => {
+      if (!_active || i >= wordsInChunk.length) { clearInterval(_wordTimer); return; }
+      if (_onword) _onword(baseIdx + i, wordsInChunk, i);
+      i++;
+    }, interval);
+  }
+
+  function playChunk(idx) {
+    if (!_active || idx >= chunks.length) {
+      _active = false;
+      if (_wordTimer) { clearInterval(_wordTimer); _wordTimer = null; }
+      if (_onend) _onend();
+      return;
+    }
+    const wordsInChunk = chunks[idx];
+    const text = wordsInChunk.join(' ');
+    const baseIdx = chunks.slice(0, idx).reduce((s, c) => s + c.length, 0) + _wordBaseIdx;
+    const url = buildUrl(text, _lang);
+    const a = getAudio();
+    a.volume = _volume;
+    a.src = url;
+    a.onerror = (e) => {
+      if (!_active) return;
+      _active = false;
+      if (_wordTimer) { clearInterval(_wordTimer); _wordTimer = null; }
+      if (_pauseTimer) { clearTimeout(_pauseTimer); _pauseTimer = null; }
+      if (_onerror) _onerror(e);
+    };
+    a.onloadedmetadata = () => {
+      const dur = a.duration || (wordsInChunk.length * 0.4 / _rate);
+      _startWordTimer(wordsInChunk, baseIdx, dur / _rate);
+    };
+    a.onended = () => {
+      if (!_active) return;
+      const delay = pauseAfterChunk(wordsInChunk, _rate);
+      if (delay > 0) {
+        _pauseTimer = setTimeout(() => {
+          _pauseTimer = null;
+          if (_active) playChunk(idx + 1);
+        }, delay);
+      } else {
+        playChunk(idx + 1);
+      }
+    };
+    a.playbackRate = Math.min(Math.max(_rate, 0.5), 2);
+    a.play().catch(err => { if (_onerror) _onerror(err); });
+  }
+
+  return {
+    speak(wordArr, lang, rate, volume, wordBaseIdx, onword, onend, onerror) {
+      this.cancel();
+      _lang = lang; _rate = rate; _volume = volume;
+      _wordBaseIdx = wordBaseIdx; _allWords = wordArr;
+      _onword = onword; _onend = onend; _onerror = onerror;
+      chunks = splitChunks(wordArr);
+      chunkIdx = 0; _active = true;
+      playChunk(0);
+    },
+    cancel() {
+      _active = false;
+      if (_wordTimer) { clearInterval(_wordTimer); _wordTimer = null; }
+      if (_pauseTimer) { clearTimeout(_pauseTimer); _pauseTimer = null; }
+      const a = getAudio();
+      a.onended = null; a.onerror = null; a.onloadedmetadata = null;
+      try { a.pause(); a.src = ''; } catch(_) {}
+    },
+    isActive() { return _active; }
+  };
+})();
+
+// Verifica se há vozes nativas para o idioma atual
+function hasNativeVoice() {
+  const sv = document.getElementById('voiceSelect').value;
+  if (!sv || sv === '__gtts__') return false;
+  return !!(voices.find(v => v.name === sv));
+}
+
+// Retorna o código de idioma Google TTS para o locale selecionado
+function getGttsLang() {
+  return GTTS_LANG_MAP[selectedCountry] || (selectedCountry.split('-')[0]) || 'en';
 }
 
 // ── FILE LOADING ────────────────────────────────────────────────
@@ -2102,7 +3288,33 @@ function loadPDF(file) {
         for (let i = 1; i <= totalPages; i++) {
           const pg = await pdfDoc.getPage(i);
           const tc = await pg.getTextContent();
-          allPagesText[i] = tc.items.map(it => it.str).join(' ').replace(/\s+/g,' ').trim();
+          // Sort items into natural reading order: top→bottom, left→right.
+          // item.transform = [scaleX, skewY, skewX, scaleY, tx, ty]
+          // ty is the y-baseline in PDF units (origin at bottom-left).
+          // Group items into lines by clustering close y values, then sort lines
+          // top→bottom (descending ty) and within each line left→right (ascending tx).
+          const LINE_TOL = 4; // px tolerance to consider items on the same line
+          const sorted = [...tc.items].filter(it => it.str);
+          // Bucket items into lines
+          const lines = [];
+          for (const it of sorted) {
+            const ty = it.transform[5];
+            const tx = it.transform[4];
+            let found = false;
+            for (const line of lines) {
+              if (Math.abs(line.ty - ty) <= LINE_TOL) {
+                line.items.push({ tx, str: it.str });
+                found = true; break;
+              }
+            }
+            if (!found) lines.push({ ty, items: [{ tx, str: it.str }] });
+          }
+          // Sort lines top→bottom (higher ty = higher on page in PDF coords)
+          lines.sort((a, b) => b.ty - a.ty);
+          // Sort items within each line left→right
+          for (const line of lines) line.items.sort((a, b) => a.tx - b.tx);
+          // Join: space between items in same line, newline between lines
+          allPagesText[i] = lines.map(line => line.items.map(it => it.str).join(' ')).join('\n').replace(/[ \t]+/g,' ').trim();
         }
         const id  = ++docIdCounter;
         const doc = { id, name:file.name, pdfDoc, totalPages, currentPage:1, allPagesText, buffer:buf };
@@ -2158,7 +3370,7 @@ function resetViewer() {
   document.getElementById('textEmpty').innerHTML = `
     <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-    </svg><p>Abra um PDF para<br>começar a leitura</p>`;
+    </svg><p>${getT(selectedCountry).open_pdf.replace('\\n','<br>')}</p>`;
   document.getElementById('textEmpty').style.display = 'flex';
   document.getElementById('textContent').style.display = 'none';
   document.getElementById('pageTotalEl').textContent = '/ 0';
@@ -2295,7 +3507,25 @@ async function renderPage(doc, pageNum, container, showLabel=false) {
   const tc = await page.getTextContent();
   pdfTextCache[`${doc.id}_${pageNum}`] = tc.items;
 
-  tc.items.forEach(item => {
+  // Sort items into the same reading order used by loadPDF (top→bottom, left→right)
+  // so that span indices in the textLayer align exactly with word indices in allPagesText.
+  const LINE_TOL_R = 4;
+  const readItems = tc.items.filter(it => it.str);
+  const rLines = [];
+  for (const it of readItems) {
+    const ty = it.transform[5];
+    const txRaw = it.transform[4];
+    let found = false;
+    for (const ln of rLines) {
+      if (Math.abs(ln.ty - ty) <= LINE_TOL_R) { ln.items.push({ txRaw, it }); found = true; break; }
+    }
+    if (!found) rLines.push({ ty, items: [{ txRaw, it }] });
+  }
+  rLines.sort((a, b) => b.ty - a.ty);
+  for (const ln of rLines) ln.items.sort((a, b) => a.txRaw - b.txRaw);
+  const orderedItems = rLines.flatMap(ln => ln.items.map(o => o.it));
+
+  orderedItems.forEach(item => {
     if (!item.str) return;
     const tx       = pdfjsLib.Util.transform(vp.transform, item.transform);
     const angle    = Math.atan2(tx[1], tx[0]);
@@ -2311,6 +3541,16 @@ async function renderPage(doc, pageNum, container, showLabel=false) {
     span.style.transform = `scaleX(${scaleX}) rotate(${angle}rad)`;
     tld.appendChild(span);
   });
+
+  // Build word→span map: walk spans in insertion order (same as orderedItems / allPagesText)
+  // and expand each span's text with the same /\s+/ split used by allPagesText.
+  // highlightSpanAt uses this map so localIdx always resolves to the correct span.
+  const wordSpanMap = [];
+  for (const sp of Array.from(tld.querySelectorAll('span'))) {
+    const wordsInSpan = sp.textContent.split(/\s+/).filter(Boolean);
+    for (let k = 0; k < wordsInSpan.length; k++) wordSpanMap.push(sp);
+  }
+  tld._wordSpanMap = wordSpanMap;
 }
 
 // ── PDF HIGHLIGHT ────────────────────────────────────────────────
@@ -2341,17 +3581,69 @@ function highlightWordInPdf(gIdx) {
 }
 function highlightSpanAt(pageWrapper, localIdx) {
   const tld = pageWrapper.querySelector('.textLayer'); if (!tld) return;
+  // Use the pre-built word→span map if available (set by renderPage).
+  // Falls back to the legacy word-count walk if the map is missing.
+  const map = tld._wordSpanMap;
+  if (map) {
+    const sp = map[localIdx];
+    if (sp) {
+      sp.classList.add('pdf-hl');
+      sp.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    return;
+  }
+  // Legacy fallback
   const spans = Array.from(tld.querySelectorAll('span'));
   let wi = 0;
   for (const sp of spans) {
     const sw = sp.textContent.split(/\s+/).filter(Boolean);
-    if (localIdx < wi+sw.length) {
+    if (localIdx < wi + sw.length) {
       sp.classList.add('pdf-hl');
-      sp.scrollIntoView({ block:'nearest', behavior:'smooth' });
+      sp.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       return;
     }
     wi += sw.length;
   }
+}
+// Highlight `count` words in the PDF textLayer starting at global word index gIdx.
+// Handles both single-page and all-pages view modes.
+function highlightRangeInPdf(gIdx, count) {
+  if (!opts.pdfHighlight || viewMode === 'text') return;
+  clearPdfHighlight();
+  const doc = activeDoc(); if (!doc) return;
+  const wrappers = document.querySelectorAll('.page-wrapper');
+  if (!wrappers.length) return;
+  // `words` (and therefore gIdx) are always LOCAL to doc.currentPage.
+  // We highlight only within the wrapper that matches the current page.
+  const endIdx = gIdx + count;
+  wrappers.forEach(wrap => {
+    const pNum = parseInt(wrap.dataset.pageNum);
+    const dId  = parseInt(wrap.dataset.docId);
+    if (dId !== doc.id) return;
+    if (pNum !== doc.currentPage) return; // only highlight the active page
+    const pw = (doc.allPagesText[pNum] || '').split(/\s+/).filter(Boolean);
+    // Highlight each word in [gIdx, endIdx) if within page bounds
+    for (let k = gIdx; k < endIdx && k < pw.length; k++) {
+      if (k === gIdx) {
+        // First word: let highlightSpanAt handle scroll
+        highlightSpanAt(wrap, k);
+      } else {
+        // Remaining words: add class only, no scroll
+        const tld = wrap.querySelector('.textLayer'); if (!tld) continue;
+        const map = tld._wordSpanMap;
+        if (map) { const sp = map[k]; if (sp) sp.classList.add('pdf-hl'); }
+        else {
+          const spans = Array.from(tld.querySelectorAll('span'));
+          let wi = 0;
+          for (const sp of spans) {
+            const sw = sp.textContent.split(/\s+/).filter(Boolean);
+            if (k < wi + sw.length) { sp.classList.add('pdf-hl'); break; }
+            wi += sw.length;
+          }
+        }
+      }
+    }
+  });
 }
 
 // ── TEXT PANEL ──────────────────────────────────────────────────
@@ -2363,7 +3655,7 @@ function updateTextPanel() {
   const txt = doc.allPagesText[doc.currentPage] || '';
   if (!txt.trim()) {
     el.style.display = 'none';
-    empty.innerHTML = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>Página ${doc.currentPage} sem texto extraível</p>`;
+    empty.innerHTML = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>${getT(selectedCountry).page||'Página'} ${doc.currentPage} — ${getT(selectedCountry).toast_no_text}</p>`;
     empty.style.display = 'flex'; words = []; return;
   }
   empty.style.display = 'none';
@@ -2372,6 +3664,13 @@ function updateTextPanel() {
   el.style.lineHeight = lineSpacing;
   let raw = txt.split(/\s+/).filter(w => w.length>0);
   if (opts.skipPunct) raw = raw.map(w => w.replace(/^[^\w]+|[^\w]+$/g,'')).filter(Boolean);
+  // Aplica stripHyphens: remove tokens só-hifens e converte hifens internos em espaço.
+  // Cada token "pré-escolar" vira dois tokens ["pré", "escolar"] para highlight correto.
+  raw = raw.flatMap(w => {
+    const s = stripHyphens(w);
+    if (!s) return [];                         // token era só hifens → descarta
+    return s.split(/\s+/).filter(Boolean);     // "pré escolar" → ["pré", "escolar"]
+  });
   words = raw;
   el.innerHTML = words.map((w,i) =>
     `<span class="word" id="w${i}" onclick="readFromWord(${i})" ondblclick="lookupWord(words[${i}],this)" oncontextmenu="wordCtx(event,${i})">${esc(w)} </span>`
@@ -2433,84 +3732,174 @@ async function goToPage(val) {
 
 // ── TTS ─────────────────────────────────────────────────────────
 function togglePlay() {
-  if (!activeDoc()) return showToast('Abra um PDF primeiro.','error');
-  if (!words.length) return showToast('Nenhum texto nesta página.','error');
+  if (!activeDoc()) return showToast(getT(selectedCountry).toast_no_pdf,'error');
+  if (!words.length) return showToast(getT(selectedCountry).toast_no_text,'error');
   isPlaying ? pauseReading() : startSpeaking();
 }
 
 function startSpeaking() {
   speechSynthesis.cancel();
+  gTTS.cancel();
   if (wordIndex >= words.length) wordIndex = 0;
-  const text = words.slice(wordIndex).join(' ');
-  utterance = new SpeechSynthesisUtterance(text);
-  applyVoiceToUtterance(utterance);
+
   karaokeOffset = wordIndex;
   buildKaraokeWindow(wordIndex);
-  utterance.onstart = () => { isPlaying = true; setPlayIcon(true); showBadge('Lendo'); };
-  const bw = text.split(/\s+/).filter(Boolean);
-  let ci = 0;
-  const wcp = bw.map(w => { const p = ci; ci += w.length+1; return p; });
-  utterance.onboundary = e => {
-    if (e.name !== 'word') return;
-    let cl = 0;
-    for (let i=0; i<wcp.length; i++) { if (wcp[i]<=e.charIndex) cl=i; else break; }
-    const abs = wordIndex + cl;
-    document.getElementById('currentWordEl').textContent = bw[cl] || '—';
-    if (opts.highlight)    { clearHighlight(); highlightWord(abs); }
-    if (opts.pdfHighlight) { highlightWordInPdf(abs); }
-    updateProgressTo(abs);
+
+  const doc = activeDoc();
+  const statusDoc = doc ? `${getT(selectedCountry).page||'Página'} ${doc.currentPage}` : (getT(selectedCountry).reading||'Lendo');
+
+  // ── Callback comum de atualização de palavra ─────────────────
+  function onWordUpdate(absIdx, wordText) {
+    wordIndex = absIdx; // keep global in sync so pause/resume is accurate
+    document.getElementById('currentWordEl').textContent = wordText || '—';
+    if (opts.highlight)    { clearHighlight(); highlightRange(absIdx, 5); }
+    if (opts.pdfHighlight) { highlightRangeInPdf(absIdx, 5); }
+    updateProgressTo(absIdx);
     if (opts.autoScroll) {
-      const el = document.getElementById(`w${abs}`);
+      const el = document.getElementById(`w${absIdx}`);
       if (el) el.scrollIntoView({ block:'nearest', behavior:'smooth' });
     }
-    updateKaraoke(abs); updateStats(abs);
-  };
-  utterance.onend = () => {
+    updateKaraoke(absIdx); updateStats(absIdx);
+  }
+
+  // ── Callback comum de fim ─────────────────────────────────────
+  function onReadEnd() {
     isPlaying = false; setPlayIcon(false); clearHighlight(); clearPdfHighlight();
     document.getElementById('currentWordEl').textContent = '—';
-    document.getElementById('statusText').textContent = 'Concluído';
-    const doc = activeDoc();
-    if (opts.continue && doc && doc.currentPage < doc.totalPages) changePage(1, true);
+    document.getElementById('statusText').textContent = (getT(selectedCountry).status_done||'');
+    const doc2 = activeDoc();
+    if (opts.continue && doc2 && doc2.currentPage < doc2.totalPages) changePage(1, true);
     else { hideBadge(); wordIndex = 0; updateProgress(); resetStats(); }
-  };
-  utterance.onerror = e => {
-    if (e.error==='interrupted'||e.error==='canceled') return;
-    isPlaying = false; setPlayIcon(false); hideBadge();
-    showToast('Erro TTS: '+e.error,'error');
-  };
-  speechSynthesis.speak(utterance);
-  const doc = activeDoc();
-  document.getElementById('statusText').textContent = doc ? `Página ${doc.currentPage}` : 'Lendo';
+  }
+
+  // ── Decide qual motor usar ────────────────────────────────────
+  // stripHyphens() é global — remove tokens só-hifens e substitui hifens internos por espaço.
+
+  if (hasNativeVoice()) {
+    // ── Motor 1: Web Speech API (nativo) ─────────────────────
+    const startWordIdx = wordIndex; // snapshot — stays fixed for this utterance
+
+    // Always build the utterance from the original page text (with punctuation intact)
+    // so the TTS engine produces natural pauses at commas, periods, etc.
+    // `words` may have punctuation stripped (opts.skipPunct), so we use allPagesText directly.
+    const doc2 = activeDoc();
+    const originalPageText = (doc2 && doc2.allPagesText[doc2.currentPage]) || '';
+    const originalWords = originalPageText.split(/\s+/).filter(Boolean);
+    // Build utterance text: original tokens from startWordIdx, hyphens removed for speech.
+    // Lone-hyphen tokens become empty strings; we keep them in bw as '' so charIndex mapping
+    // stays aligned — but we filter them out of the actual spoken text via a position map.
+    const originalSlice = originalWords.slice(startWordIdx);
+    // Build a spoken text and a parallel index map: spokenWordIdx → originalSlice index
+    const spokenTokens = [];   // tokens actually spoken (no empty strings)
+    const spokenToOrig = [];   // spokenTokens[i] came from originalSlice[spokenToOrig[i]]
+    for (let i = 0; i < originalSlice.length; i++) {
+      const t = stripHyphens(originalSlice[i]);
+      if (t.trim()) { spokenTokens.push(t); spokenToOrig.push(i); }
+    }
+    const text = spokenTokens.join(' ') || words.slice(startWordIdx).map(stripHyphens).filter(s => s.trim()).join(' ');
+    utterance = new SpeechSynthesisUtterance(text);
+    applyVoiceToUtterance(utterance);
+
+    utterance.onstart = () => { isPlaying = true; setPlayIcon(true); showBadge(getT(selectedCountry).reading||''); };
+
+    const bw = text.split(/\s+/).filter(Boolean);
+    let ci = 0;
+    const wcp = bw.map(w => { const p = ci; ci += w.length + 1; return p; });
+    // wcp[i] = char offset of spoken word i in `text`
+    utterance.onboundary = e => {
+      if (e.name !== 'word') return;
+      let cl = 0;
+      for (let i = 0; i < wcp.length; i++) {
+        if (wcp[i] <= e.charIndex) cl = i; else break;
+      }
+      // cl is index into spokenTokens; map back to original words[] index
+      const origOffset = spokenToOrig[cl] !== undefined ? spokenToOrig[cl] : cl;
+      const abs = startWordIdx + origOffset;
+      onWordUpdate(abs, words[abs] || bw[cl]);
+    };
+    utterance.onend = onReadEnd;
+    utterance.onerror = e => {
+      if (e.error==='interrupted'||e.error==='canceled') return;
+      isPlaying = false; setPlayIcon(false); hideBadge();
+      showToast('Erro TTS: '+e.error,'error');
+    };
+    speechSynthesis.speak(utterance);
+    document.getElementById('statusText').textContent = statusDoc;
+
+  } else {
+    // ── Motor 2: Google Translate TTS (fallback público) ─────
+    isPlaying = true; setPlayIcon(true);
+    showBadge('🌐 ' + (getT(selectedCountry).reading||'Lendo'));
+    document.getElementById('statusText').textContent = statusDoc;
+
+    // Use original words (with punctuation) so gTTS can pause at sentence boundaries.
+    // Also strip hyphens so the TTS does not read them aloud.
+    const doc3 = activeDoc();
+    const origText3 = (doc3 && doc3.allPagesText[doc3.currentPage]) || '';
+    const origWords3 = origText3.split(/\s+/).filter(Boolean);
+    const sourceSlice = origWords3.length ? origWords3.slice(wordIndex) : words.slice(wordIndex);
+    // Filter lone-hyphen tokens and replace mid-word hyphens with space
+    const wordsSlice = sourceSlice.map(stripHyphens).filter(s => s.trim());
+    const lang = getGttsLang();
+    const rate = parseFloat(document.getElementById('speedSlider').value);
+    const volume = parseFloat(document.getElementById('volumeSlider').value);
+
+    gTTS.speak(
+      wordsSlice, lang, rate, volume, wordIndex,
+      // onword
+      (absIdx, chunkWords, localIdx) => {
+        onWordUpdate(absIdx, chunkWords[localIdx] || '—');
+      },
+      // onend
+      onReadEnd,
+      // onerror
+      (err) => {
+        isPlaying = false; setPlayIcon(false); hideBadge();
+        console.error('Google TTS erro:', err);
+        showToast('Erro no Google TTS — verifique a conexão.','error');
+      }
+    );
+  }
 }
 
 function pauseReading() {
   speechSynthesis.cancel();
+  gTTS.cancel();
   isPlaying = false; setPlayIcon(false); hideBadge();
-  document.getElementById('statusText').textContent = 'Pausado';
+  document.getElementById('statusText').textContent = (getT(selectedCountry).status_paused||'');
 }
 function stopReading() {
   speechSynthesis.cancel();
+  gTTS.cancel();
   isPlaying = false; wordIndex = 0; setPlayIcon(false); hideBadge();
   clearHighlight(); clearPdfHighlight();
   document.getElementById('currentWordEl').textContent = '—';
-  document.getElementById('statusText').textContent = 'Parado';
+  document.getElementById('statusText').textContent = (getT(selectedCountry).status_stopped||'');
   document.getElementById('progressFill').style.width = '0%';
   resetStats();
 }
 function skipWords(n) {
   wordIndex = Math.max(0, Math.min(words.length-1, wordIndex+n));
-  if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); }
+  if (isPlaying) { speechSynthesis.cancel(); gTTS.cancel(); startSpeaking(); }
   else { clearHighlight(); highlightWord(wordIndex); updateProgress(); }
 }
 function readFromWord(idx) {
   wordIndex = idx;
-  if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); }
+  if (isPlaying) { speechSynthesis.cancel(); gTTS.cancel(); startSpeaking(); }
   else { clearHighlight(); highlightWord(idx); }
 }
 
 // ── HIGHLIGHT ───────────────────────────────────────────────────
 function clearHighlight() { document.querySelectorAll('.word.hl').forEach(e => e.classList.remove('hl')); }
 function highlightWord(i) { const e = document.getElementById(`w${i}`); if (e) e.classList.add('hl'); }
+// Highlight `count` words starting at index `i` (clamps to words array bounds)
+function highlightRange(i, count) {
+  const end = Math.min(i + count, words.length);
+  for (let k = i; k < end; k++) {
+    const e = document.getElementById(`w${k}`);
+    if (e) e.classList.add('hl');
+  }
+}
 
 // ── PROGRESS ────────────────────────────────────────────────────
 function updateProgress()    { document.getElementById('progressFill').style.width=(!words.length?0:wordIndex/words.length*100)+'%'; }
@@ -2520,13 +3909,57 @@ function seekProgress(e) {
   const r = e.currentTarget.getBoundingClientRect();
   const ratio = Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
   wordIndex = Math.floor(ratio*words.length);
-  if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); }
+  if (isPlaying) { speechSynthesis.cancel(); gTTS.cancel(); startSpeaking(); }
   else { clearHighlight(); highlightWord(wordIndex); updateProgress(); }
 }
 
 // ── ZOOM ────────────────────────────────────────────────────────
 async function adjustZoom(d) { zoom=Math.max(.3,Math.min(4,zoom+d)); syncZoomDisplay(); await renderCurrentPage(); savePrefs(); }
 async function resetZoom()   { zoom=1; syncZoomDisplay(); await renderCurrentPage(); savePrefs(); }
+
+// ── STRIP HYPHENS ───────────────────────────────────────────────
+// Função global usada pelo TTS e pelo painel de texto (view "Leitura"):
+//   • Tokens que são só hifens/travessões ( -, –, —, -- ) → removidos (retorna '')
+//   • Hifens dentro de palavras ( pré-escolar ) → substituídos por espaço ( pré escolar )
+function stripHyphens(token) {
+  if (/^[-–—]+$/.test(token)) return '';        // token só de hifens → descarta
+  return token.replace(/[-–—]/g, ' ');           // hífen no meio da palavra → espaço
+}
+
+// ── OCR TEXT CLEANER ────────────────────────────────────────────
+// Repairs common OCR artefacts so the "Text" view reads cleanly.
+function cleanOcrText(raw) {
+  let t = raw;
+  // 1. Reunite soft-hyphenated words split across lines: "pala-\nvra" → "palavra"
+  t = t.replace(/(\w)-\n(\w)/g, '$1$2');
+  // 2. Reunite hard-hyphenated line-breaks where hyphen is clearly a break artifact:
+  //    a lowercase letter, hyphen, newline, lowercase letter → join without hyphen
+  t = t.replace(/([a-záàâãéèêíïóôõúüçñ])-\n([a-záàâãéèêíïóôõúüçñ])/gi, '$1$2');
+  // 3. Merge lines that are clearly continuation of the same sentence
+  //    (line does NOT end with sentence-ending punctuation and next line
+  //     starts with a lowercase letter or continues mid-sentence)
+  t = t.replace(/([^\n.!?:;])\n([a-záàâãéèêíïóôõúüçñ"«(])/gi, '$1 $2');
+  // 4. Remove isolated single characters on their own line (OCR noise like "l", "I", "0")
+  //    but preserve single-letter lines that look like list markers ("a.", "b.")
+  t = t.replace(/^\s*([^a-záàâãéèêíïóôõúüçñA-Z\d\n]{1,2})\s*$/gm, '');
+  // 5. Collapse runs of 3+ blank lines to a single blank line (paragraph break)
+  t = t.replace(/\n{3,}/g, '\n\n');
+  // 6. Fix spaces accidentally inserted inside words by OCR: "p a l a v r a" → "palavra"
+  //    Only trigger when every token between spaces is a single letter (pure OCR spacing noise)
+  t = t.replace(/\b([a-záàâãéèêíïóôõúüçñA-Z]) (?=[a-záàâãéèêíïóôõúüçñA-Z] (?:[a-záàâãéèêíïóôõúüçñA-Z] ){1,6}[a-záàâãéèêíïóôõúüçñA-Z]\b)/g, '$1');
+  // 7. Remove stray page numbers that appear alone on a line (1–4 digits, possibly with spaces)
+  t = t.replace(/^\s*\d{1,4}\s*$/gm, '');
+  // 8. Remove lone hyphen/dash tokens (isolated "-", "–", "—" surrounded by spaces or line boundaries)
+  t = t.replace(/(^|[ \t])[-–—]+($|[ \t\n])/gm, '$1$2');
+  // 9. Replace mid-word hyphens with a space ("pré-escolar" → "pré escolar")
+  t = t.replace(/(\w)[-–—](\w)/g, '$1 $2');
+  // 10. Normalise multiple spaces to single space
+  t = t.replace(/[ \t]{2,}/g, ' ');
+  // 11. Trim each line
+  t = t.split('\n').map(l => l.trim()).join('\n');
+  // 12. Final trim
+  return t.trim();
+}
 
 // ── VIEW MODE ───────────────────────────────────────────────────
 async function setViewMode(m) {
@@ -2537,11 +3970,15 @@ async function setViewMode(m) {
   if (m === 'text') {
     cc.innerHTML = '';
     const doc = activeDoc();
-    if (!doc) { cc.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:14px">Abra um PDF primeiro</div>'; return; }
-    const full = doc.allPagesText.slice(1).join('\n\n─── Página ───\n\n');
+    if (!doc) { cc.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:14px">${getT(selectedCountry).toast_no_pdf}</div>`; return; }
+    const pages = doc.allPagesText.slice(1);
+    const full = pages.map((p, i) => {
+      const cleaned = cleanOcrText(p || '');
+      return (i > 0 ? '─── Página ' + (i + 1) + ' ───\n\n' : '') + cleaned;
+    }).join('\n\n');
     const div = document.createElement('div');
-    div.style.cssText = `max-width:740px;width:100%;padding:28px;font-size:${fontSize}px;line-height:${lineSpacing};color:#d8d3c8;white-space:pre-wrap`;
-    div.textContent = full || 'Nenhum texto extraível.';
+    div.style.cssText = `max-width:740px;width:100%;padding:28px;font-size:${fontSize}px;line-height:${lineSpacing};color:#d8d3c8;white-space:pre-wrap;text-align:justify`;
+    div.textContent = full || getT(selectedCountry).toast_no_text;
     cc.appendChild(div);
   } else if (activeDoc()) await renderCurrentPage();
   savePrefs();
@@ -2554,11 +3991,11 @@ function updateSlider(t, v) {
   if (t==='pitch')  document.getElementById('pitchVal').textContent  = n.toFixed(2);
   if (t==='volume') document.getElementById('volumeVal').textContent = Math.round(n*100)+'%';
   syncMobileSliders();
-  if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); }
+  if (isPlaying) { speechSynthesis.cancel(); gTTS.cancel(); startSpeaking(); }
   savePrefs();
 }
 function toggleOpt(k) { opts[k]=!opts[k]; refreshToggles(); savePrefs(); }
-function onVoiceChange() { syncMobileVoice(); updateLoquendoBadge(); if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); } savePrefs(); }
+function onVoiceChange() { syncMobileVoice(); updateLoquendoBadge(); if (isPlaying) { speechSynthesis.cancel(); gTTS.cancel(); startSpeaking(); } savePrefs(); }
 
 // ── UI HELPERS ──────────────────────────────────────────────────
 function setPlayIcon(p) {
@@ -2665,7 +4102,7 @@ function toggleBookmarks() {
   renderBookmarks();
 }
 function addBookmark() {
-  const doc = activeDoc(); if (!doc) return showToast('Abra um PDF primeiro.','error');
+  const doc = activeDoc(); if (!doc) return showToast(getT(selectedCountry).toast_no_pdf,'error');
   if (!bookmarks[doc.id]) bookmarks[doc.id] = [];
   if (bookmarks[doc.id].find(b=>b.page===doc.currentPage))
     return showToast(`Página ${doc.currentPage} já está nos favoritos`,'error');
@@ -2692,6 +4129,8 @@ function renderBookmarks() {
       <span class="bm-note">${esc(b.note)}</span>
       <span class="bm-del" onclick="removeBookmark(${doc.id},${b.page},event)">×</span>
     </div>`).join('');
+  // keep mobile sheet in sync if open on favoritos tab
+  if (activeMobTab === 'favoritos') renderMobSheetBm();
 }
 async function jumpToBookmark(page) {
   await goToPage(page);
@@ -2709,6 +4148,9 @@ function loadNotes() {
   const doc = activeDoc();
   const ta  = document.getElementById('notesArea');
   ta.value  = doc ? (notesData[doc.id]||'') : '';
+  // keep mobile notes textarea in sync
+  const tam = document.getElementById('notesAreaMob');
+  if (tam) tam.value = ta.value;
 }
 function saveNotes() {
   const doc = activeDoc(); if (!doc) return;
@@ -2746,6 +4188,8 @@ function changeFontSize(d) {
 function changeLineSpacing(d) {
   lineSpacing = Math.max(1.2, Math.min(3.5, +(lineSpacing+d).toFixed(1)));
   document.getElementById('lineSpacingVal').textContent = lineSpacing.toFixed(1);
+  const lsm = document.getElementById('lineSpacingValMob');
+  if (lsm) lsm.textContent = lineSpacing.toFixed(1);
   const tc = document.getElementById('textContent');
   if (tc) tc.style.lineHeight = lineSpacing;
   savePrefs();
@@ -2754,8 +4198,10 @@ function changeLineSpacing(d) {
 // ── HIGHLIGHT COLOR ─────────────────────────────────────────────
 function setHlColor(swatch) {
   hlColor = swatch.dataset.color;
-  document.querySelectorAll('.hl-swatch').forEach(s=>s.classList.remove('active'));
-  swatch.classList.add('active');
+  // Desativa todos os swatches em ambos os grupos (desktop #hlColors e mobile #hlColorsMob)
+  document.querySelectorAll('#hlColors .cfg-sw, #hlColorsMob .cfg-sw').forEach(s => s.classList.remove('active'));
+  // Ativa o swatch clicado e o equivalente no outro grupo (mesmo data-color)
+  document.querySelectorAll('#hlColors .cfg-sw[data-color="'+hlColor+'"], #hlColorsMob .cfg-sw[data-color="'+hlColor+'"]').forEach(s => s.classList.add('active'));
   applyHlColor(); savePrefs();
 }
 function applyHlColor() {
@@ -2767,7 +4213,7 @@ function applyHlColor() {
 
 // ── EXPORT / COPY ───────────────────────────────────────────────
 function exportText(mode) {
-  const doc = activeDoc(); if (!doc) return showToast('Abra um PDF primeiro.','error');
+  const doc = activeDoc(); if (!doc) return showToast(getT(selectedCountry).toast_no_pdf,'error');
   let text, filename;
   if (mode==='page') {
     text = doc.allPagesText[doc.currentPage]||'';
@@ -2776,7 +4222,7 @@ function exportText(mode) {
     text = doc.allPagesText.slice(1).map((t,i)=>`\n─── Página ${i+1} ───\n\n${t}`).join('\n');
     filename = `${doc.name.replace('.pdf','')}_texto.txt`;
   }
-  if (!text.trim()) return showToast('Nenhum texto para exportar.','error');
+  if (!text.trim()) return showToast(getT(selectedCountry).toast_no_text,'error');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));
   a.download = filename; a.click(); URL.revokeObjectURL(a.href);
@@ -2785,7 +4231,7 @@ function exportText(mode) {
 async function copyPageText() {
   const doc = activeDoc(); if (!doc) return;
   const txt = doc.allPagesText[doc.currentPage]||'';
-  if (!txt) return showToast('Nenhum texto para copiar.','error');
+  if (!txt) return showToast(getT(selectedCountry).toast_no_text,'error');
   try { await navigator.clipboard.writeText(txt); showToast('Texto copiado ✓','success'); }
   catch(_) { showToast('Não foi possível copiar.','error'); }
 }
@@ -2877,7 +4323,7 @@ function updateThumbActive() {
 
 // ── RSVP ────────────────────────────────────────────────────────
 function openRsvp() {
-  if (!words.length) return showToast('Nenhum texto carregado.','error');
+  if (!words.length) return showToast(getT(selectedCountry).toast_no_text,'error');
   rsvpIdx = wordIndex; rsvpActive = true;
   document.getElementById('rsvpOverlay').classList.add('open');
   renderRsvpWord();
@@ -3080,7 +4526,7 @@ function showCtxMenu(e, idx) {
 function ctxAction(action) {
   document.getElementById('ctxMenu').classList.remove('open');
   if (action==='dict' && ctxWordIdx>=0) { const w=words[ctxWordIdx]; if(w) lookupWord(w, document.getElementById(`w${ctxWordIdx}`)); }
-  if (action==='readFromHere' && ctxWordIdx>=0) { wordIndex=ctxWordIdx; if (isPlaying) { speechSynthesis.cancel(); startSpeaking(); } else highlightWord(ctxWordIdx); }
+  if (action==='readFromHere' && ctxWordIdx>=0) { wordIndex=ctxWordIdx; if (isPlaying) { speechSynthesis.cancel(); gTTS.cancel(); startSpeaking(); } else highlightWord(ctxWordIdx); }
   if (action==='copy' && ctxWordIdx>=0) { const w=words[ctxWordIdx]; if (w) { navigator.clipboard.writeText(w).catch(()=>{}); showToast(`Copiado: "${w}"`, 'success'); } }
   if (action==='search') toggleSearch();
   if (action==='bookmark') addBookmark();
